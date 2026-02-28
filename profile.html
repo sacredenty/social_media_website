@@ -262,39 +262,44 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="app-oop.js"></script>
     <script>
-        // Load profile data
-        document.addEventListener('DOMContentLoaded', function() {
-            loadProfileData();
-            loadUserPosts();
-            loadSharedPosts();
-        });
+        // Profile Page Controller
+        class ProfilePage {
+            constructor() {
+                this.currentUser = null;
+                this.init();
+            }
 
-        function loadProfileData() {
-            const userData = localStorage.getItem('socializers_current_user');
-            if (userData) {
-                const user = JSON.parse(userData);
-                
+            init() {
+                this.currentUser = User.getCurrentUser();
+                if (!this.currentUser) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                this.loadProfileData();
+            }
+
+            loadProfileData() {
                 // Update profile information
-                document.getElementById('profileAvatar').src = user.avatar;
-                document.getElementById('profileName').textContent = `${user.firstName} ${user.lastName}`;
-                document.getElementById('profileEmail').textContent = user.email;
-                document.getElementById('fullName').textContent = `${user.firstName} ${user.lastName}`;
-                document.getElementById('email').textContent = user.email;
+                document.getElementById('profileAvatar').src = this.currentUser.avatar;
+                document.getElementById('profileName').textContent = this.currentUser.displayName;
+                document.getElementById('profileEmail').textContent = this.currentUser.email;
+                document.getElementById('fullName').textContent = this.currentUser.displayName;
+                document.getElementById('email').textContent = this.currentUser.email;
                 
-                if (user.birthday) {
-                    const birthday = new Date(user.birthday);
+                if (this.currentUser.birthday) {
+                    const birthday = new Date(this.currentUser.birthday);
                     const options = { year: 'numeric', month: 'long', day: 'numeric' };
                     document.getElementById('birthday').textContent = birthday.toLocaleDateString('en-US', options);
                 }
                 
-                if (user.gender) {
-                    document.getElementById('gender').textContent = user.gender.charAt(0).toUpperCase() + user.gender.slice(1);
+                if (this.currentUser.gender) {
+                    document.getElementById('gender').textContent = this.currentUser.gender.charAt(0).toUpperCase() + this.currentUser.gender.slice(1);
                 }
                 
-                if (user.createdAt) {
-                    const createdDate = new Date(user.createdAt);
+                if (this.currentUser.createdAt) {
+                    const createdDate = new Date(this.currentUser.createdAt);
                     const options = { year: 'numeric', month: 'long', day: 'numeric' };
                     document.getElementById('memberSince').textContent = createdDate.toLocaleDateString('en-US', options);
                 }
@@ -302,80 +307,78 @@
                 // Update navigation profile
                 const navProfileImg = document.querySelector('.nav-profile img');
                 const navProfileName = document.querySelector('.nav-profile span');
-                if (navProfileImg) navProfileImg.src = user.avatar;
-                if (navProfileName) navProfileName.textContent = `${user.firstName} ${user.lastName}`;
+                if (navProfileImg) navProfileImg.src = this.currentUser.avatar;
+                if (navProfileName) navProfileName.textContent = this.currentUser.displayName;
+            }
+
+            loadUserPosts() {
+                const allPosts = Post.getAllPosts();
+                const userPosts = allPosts.filter(post => post.author === this.currentUser.displayName);
+                const postsContainer = document.getElementById('userPosts');
+                
+                if (userPosts.length > 0) {
+                    postsContainer.innerHTML = '';
+                    userPosts.forEach(post => {
+                        const postElement = document.createElement('div');
+                        postElement.className = 'profile-post';
+                        postElement.innerHTML = `
+                            <div class="profile-post-header">
+                                <img src="${post.avatar}" alt="${post.author}" class="profile-post-avatar">
+                                <div class="profile-post-info">
+                                    <h4>${post.author}</h4>
+                                    <p>${post.time} • <i class="fas fa-globe"></i></p>
+                                </div>
+                            </div>
+                            <div class="post-content">
+                                <p>${post.content}</p>
+                                ${post.image ? `<img src="${post.image}" alt="Post image" style="width: 100%; border-radius: 8px; margin-top: 10px;">` : ''}
+                            </div>
+                            <div style="display: flex; gap: 20px; margin-top: 10px; color: #65676b; font-size: 14px;">
+                                <span><i class="fas fa-thumbs-up"></i> ${post.likes} likes</span>
+                                <span><i class="fas fa-comment"></i> ${post.comments} comments</span>
+                                <span><i class="fas fa-share"></i> ${post.shares} shares</span>
+                            </div>
+                        `;
+                        postsContainer.appendChild(postElement);
+                    });
+                }
+            }
+
+            loadSharedPosts() {
+                const sharedPosts = SharedPost.getAll();
+                const userSharedPosts = sharedPosts.filter(post => post.sharedBy === this.currentUser.displayName);
+                const sharedPostsContainer = document.getElementById('userSharedPosts');
+                
+                if (userSharedPosts.length > 0) {
+                    sharedPostsContainer.innerHTML = '';
+                    userSharedPosts.forEach(post => {
+                        const postElement = document.createElement('div');
+                        postElement.className = 'profile-post';
+                        postElement.innerHTML = `
+                            <div class="profile-post-header">
+                                <img src="${post.sharedByAvatar}" alt="${post.sharedBy}" class="profile-post-avatar">
+                                <div class="profile-post-info">
+                                    <h4>${post.sharedBy}</h4>
+                                    <p>${post.shareTime} • <i class="fas fa-share"></i> Shared</p>
+                                </div>
+                            </div>
+                            ${post.shareComment ? `<p style="margin: 10px 0; font-style: italic;">"${post.shareComment}"</p>` : ''}
+                            <div style="border-left: 3px solid #e4e6eb; padding-left: 15px; margin: 10px 0;">
+                                <p><strong>${post.originalAuthor}:</strong> ${post.originalContent}</p>
+                                ${post.originalImage ? `<img src="${post.originalImage}" alt="Shared content" style="width: 100%; border-radius: 8px; margin-top: 10px;">` : ''}
+                            </div>
+                        `;
+                        sharedPostsContainer.appendChild(postElement);
+                    });
+                }
             }
         }
 
-        function loadSharedPosts() {
-            const sharedPosts = JSON.parse(localStorage.getItem('socializers_shared_posts')) || [];
-            const currentUser = JSON.parse(localStorage.getItem('socializers_current_user'));
-            
-            if (!currentUser) return;
-            
-            const userSharedPosts = sharedPosts.filter(post => post.sharedBy === `${currentUser.firstName} ${currentUser.lastName}`);
-            const sharedPostsContainer = document.getElementById('userSharedPosts');
-            
-            if (userSharedPosts.length > 0) {
-                sharedPostsContainer.innerHTML = '';
-                userSharedPosts.forEach(post => {
-                    const postElement = document.createElement('div');
-                    postElement.className = 'profile-post';
-                    postElement.innerHTML = `
-                        <div class="profile-post-header">
-                            <img src="${post.sharedByAvatar}" alt="${post.sharedBy}" class="profile-post-avatar">
-                            <div class="profile-post-info">
-                                <h4>${post.sharedBy}</h4>
-                                <p>${post.shareTime} • <i class="fas fa-share"></i> Shared</p>
-                            </div>
-                        </div>
-                        ${post.shareComment ? `<p style="margin: 10px 0; font-style: italic;">"${post.shareComment}"</p>` : ''}
-                        <div style="border-left: 3px solid #e4e6eb; padding-left: 15px; margin: 10px 0;">
-                            <p><strong>${post.originalAuthor}:</strong> ${post.originalContent}</p>
-                            ${post.originalImage ? `<img src="${post.originalImage}" alt="Shared content" style="width: 100%; border-radius: 8px; margin-top: 10px;">` : ''}
-                        </div>
-                    `;
-                    sharedPostsContainer.appendChild(postElement);
-                });
-            }
-        }
+        let profilePage;
 
-        function loadUserPosts() {
-            const allPosts = JSON.parse(localStorage.getItem('socializers_user_posts')) || [];
-            const currentUser = JSON.parse(localStorage.getItem('socializers_current_user'));
-            
-            if (!currentUser) return;
-            
-            const userPosts = allPosts.filter(post => post.author === `${currentUser.firstName} ${currentUser.lastName}`);
-            const postsContainer = document.getElementById('userPosts');
-            
-            if (userPosts.length > 0) {
-                postsContainer.innerHTML = '';
-                userPosts.forEach(post => {
-                    const postElement = document.createElement('div');
-                    postElement.className = 'profile-post';
-                    postElement.innerHTML = `
-                        <div class="profile-post-header">
-                            <img src="${post.avatar}" alt="${post.author}" class="profile-post-avatar">
-                            <div class="profile-post-info">
-                                <h4>${post.author}</h4>
-                                <p>${post.time} • <i class="fas fa-globe"></i></p>
-                            </div>
-                        </div>
-                        <div class="post-content">
-                            <p>${post.content}</p>
-                            ${post.image ? `<img src="${post.image}" alt="Post image" style="width: 100%; border-radius: 8px; margin-top: 10px;">` : ''}
-                        </div>
-                        <div style="display: flex; gap: 20px; margin-top: 10px; color: #65676b; font-size: 14px;">
-                            <span><i class="fas fa-thumbs-up"></i> ${post.likes} likes</span>
-                            <span><i class="fas fa-comment"></i> ${post.comments} comments</span>
-                            <span><i class="fas fa-share"></i> ${post.shares} shares</span>
-                        </div>
-                    `;
-                    postsContainer.appendChild(postElement);
-                });
-            }
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            profilePage = new ProfilePage();
+        });
 
         function showTab(tabName) {
             // Hide all tabs
@@ -393,35 +396,24 @@
         }
 
         function editProfile() {
-            alert('Edit profile feature coming soon!');
+            UI.showNotification('Edit profile feature coming soon!');
         }
 
         function showProfileMenu() {
             const menu = document.getElementById('profileMenu');
-            if (menu.style.display === 'none') {
-                menu.style.display = 'block';
-            } else {
-                menu.style.display = 'none';
+            if (menu) {
+                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
             }
         }
 
         function logout() {
             if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('socializers_current_user');
+                User.logout();
                 window.location.href = 'login.html';
             }
-            document.getElementById('profileMenu').style.display = 'none';
+            const menu = document.getElementById('profileMenu');
+            if (menu) menu.style.display = 'none';
         }
-
-        // Close profile menu when clicking outside
-        document.addEventListener('click', function(e) {
-            const profileMenu = document.getElementById('profileMenu');
-            const navProfile = document.querySelector('.nav-profile');
-            
-            if (profileMenu && navProfile && !navProfile.contains(e.target)) {
-                profileMenu.style.display = 'none';
-            }
-        });
     </script>
 </body>
 </html>
