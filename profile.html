@@ -267,6 +267,7 @@
         // Load profile data
         document.addEventListener('DOMContentLoaded', function() {
             loadProfileData();
+            loadUserPosts();
             loadSharedPosts();
         });
 
@@ -335,6 +336,43 @@
                         </div>
                     `;
                     sharedPostsContainer.appendChild(postElement);
+                });
+            }
+        }
+
+        function loadUserPosts() {
+            const allPosts = JSON.parse(localStorage.getItem('socializers_user_posts')) || [];
+            const currentUser = JSON.parse(localStorage.getItem('socializers_current_user'));
+            
+            if (!currentUser) return;
+            
+            const userPosts = allPosts.filter(post => post.author === `${currentUser.firstName} ${currentUser.lastName}`);
+            const postsContainer = document.getElementById('userPosts');
+            
+            if (userPosts.length > 0) {
+                postsContainer.innerHTML = '';
+                userPosts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'profile-post';
+                    postElement.innerHTML = `
+                        <div class="profile-post-header">
+                            <img src="${post.avatar}" alt="${post.author}" class="profile-post-avatar">
+                            <div class="profile-post-info">
+                                <h4>${post.author}</h4>
+                                <p>${post.time} • <i class="fas fa-globe"></i></p>
+                            </div>
+                        </div>
+                        <div class="post-content">
+                            <p>${post.content}</p>
+                            ${post.image ? `<img src="${post.image}" alt="Post image" style="width: 100%; border-radius: 8px; margin-top: 10px;">` : ''}
+                        </div>
+                        <div style="display: flex; gap: 20px; margin-top: 10px; color: #65676b; font-size: 14px;">
+                            <span><i class="fas fa-thumbs-up"></i> ${post.likes} likes</span>
+                            <span><i class="fas fa-comment"></i> ${post.comments} comments</span>
+                            <span><i class="fas fa-share"></i> ${post.shares} shares</span>
+                        </div>
+                    `;
+                    postsContainer.appendChild(postElement);
                 });
             }
         }

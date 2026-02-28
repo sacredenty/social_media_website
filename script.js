@@ -65,9 +65,24 @@ let posts = [
 // Shared posts storage
 let sharedPosts = JSON.parse(localStorage.getItem('socializers_shared_posts')) || [];
 
+// Load user posts from localStorage
+function loadUserPosts() {
+    const savedPosts = localStorage.getItem('socializers_user_posts');
+    if (savedPosts) {
+        const userPosts = JSON.parse(savedPosts);
+        // Merge with default posts, avoiding duplicates
+        userPosts.forEach(savedPost => {
+            if (!posts.find(p => p.id === savedPost.id)) {
+                posts.push(savedPost);
+            }
+        });
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     updateUIWithCurrentUser();
+    loadUserPosts();
     initializeEventListeners();
     loadPosts();
 });
@@ -102,10 +117,16 @@ function updateUIWithCurrentUser() {
 
 // Event Listeners
 function initializeEventListeners() {
-    // Post input focus effect
-    postInput.addEventListener('focus', function() {
-        this.placeholder = "Share your thoughts with the world...";
-    });
+    // Post input click to open creation modal
+    if (postInput) {
+        postInput.addEventListener('click', function() {
+            showCreatePostModal();
+        });
+        
+        postInput.addEventListener('focus', function() {
+            this.placeholder = "Share your thoughts with the world...";
+        });
+    }
     
     // Post options
     postOptions.forEach(option => {
@@ -133,7 +154,147 @@ function initializeEventListeners() {
     });
 }
 
-// Handle post options (photo/video, feeling, etc.)
+// Show create post modal
+function showCreatePostModal() {
+    // Create modal overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+    
+    modalContent.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">Create Post</h2>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+            <img src="${currentUser.avatar}" alt="${currentUser.name}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+            <div>
+                <strong>${currentUser.name}</strong>
+                <p style="margin: 0; color: #65676b; font-size: 14px;">
+                    <i class="fas fa-globe"></i> Public
+                </p>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <textarea id="postContent" placeholder="What's on your mind, ${currentUser.firstName}?" style="width: 100%; min-height: 120px; padding: 15px; border: none; outline: none; font-size: 16px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+        
+        <div style="border: 1px solid #e4e6eb; border-radius: 8px; padding: 10px; margin-bottom: 15px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <i class="fas fa-image" style="color: #42b72a;"></i>
+                <span>Add photos/videos</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 10px;">
+                <button style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f0f2f5'" onmouseout="this.style.backgroundColor='transparent'">
+                    <i class="fas fa-image" style="color: #42b72a;"></i>
+                </button>
+                <button style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f0f2f5'" onmouseout="this.style.backgroundColor='transparent'">
+                    <i class="fas fa-user-tag" style="color: #1877f2;"></i>
+                </button>
+                <button style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f0f2f5'" onmouseout="this.style.backgroundColor='transparent'">
+                    <i class="fas fa-smile" style="color: #f0b429;"></i>
+                </button>
+                <button style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f0f2f5'" onmouseout="this.style.backgroundColor='transparent'">
+                    <i class="fas fa-map-marker-alt" style="color: #f5533d;"></i>
+                </button>
+            </div>
+            
+            <button id="postButton" onclick="createPost(this)" style="padding: 8px 20px; background: #1877f2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#166fe5'" onmouseover="this.style.backgroundColor='#1877f2'">
+                Post
+            </button>
+        </div>
+    `;
+    
+    modalOverlay.className = 'modal-overlay';
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+    
+    // Focus on textarea
+    setTimeout(() => {
+        document.getElementById('postContent').focus();
+    }, 100);
+    
+    // Close on overlay click
+    modalOverlay.addEventListener('click', function(e) {
+        if (e.target === modalOverlay) {
+            modalOverlay.remove();
+        }
+    });
+    
+    // Handle Enter key to post
+    document.getElementById('postContent').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            createPost(document.getElementById('postButton'));
+        }
+    });
+}
+
+// Create post function
+function createPost(button) {
+    const content = document.getElementById('postContent').value.trim();
+    
+    if (!content) {
+        showNotification('Please write something before posting!');
+        return;
+    }
+    
+    // Create new post
+    const newPost = {
+        id: Date.now(),
+        author: currentUser.name,
+        avatar: currentUser.avatar,
+        content: content,
+        image: null,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        time: 'Just now',
+        liked: false,
+        shared: false
+    };
+    
+    // Add to posts array (at beginning)
+    posts.unshift(newPost);
+    
+    // Save to localStorage
+    localStorage.setItem('socializers_user_posts', JSON.stringify(posts));
+    
+    // Close modal
+    button.closest('.modal-overlay').remove();
+    
+    // Show success notification
+    showNotification('Post published successfully!');
+    
+    // Reload posts to show the new post
+    loadPosts();
+}
 function handlePostOption(e) {
     const option = e.currentTarget;
     const optionText = option.textContent.trim();
@@ -573,14 +734,27 @@ function loadPosts() {
     // Combine original posts and shared posts
     const allPosts = [...sharedPosts, ...posts];
     
-    // Sort by time (newest first)
+    // Sort posts: user posts first, then shared posts, then others
     allPosts.sort((a, b) => {
-        if (a.shareTime && b.shareTime) {
-            return 0; // Keep original order for demo
-        }
-        if (a.shareTime) return -1; // Shared posts first
-        if (b.shareTime) return 1;
-        return 0;
+        // User posts (current user) come first
+        const aIsUserPost = a.author === currentUser.name && !a.originalPostId;
+        const bIsUserPost = b.author === currentUser.name && !b.originalPostId;
+        
+        if (aIsUserPost && !bIsUserPost) return -1;
+        if (!aIsUserPost && bIsUserPost) return 1;
+        
+        // Shared posts come next
+        const aIsShared = !!a.originalPostId;
+        const bIsShared = !!b.originalPostId;
+        
+        if (aIsShared && !bIsShared) return -1;
+        if (!aIsShared && bIsShared) return 1;
+        
+        // For same type, sort by time (newest first)
+        if (a.time === 'Just now' && b.time !== 'Just now') return -1;
+        if (a.time !== 'Just now' && b.time === 'Just now') return 1;
+        
+        return 0; // Keep original order for demo
     });
     
     // Render each post
