@@ -81,6 +81,16 @@
         </div>
     </div>
     
+    <script src="database.js"></script>
     <script src="auth.js"></script>
+    <script>
+        // Test if Database class is available
+        console.log('🧪 Testing Database class availability...');
+        if (typeof Database !== 'undefined') {
+            console.log('✅ Database class is available');
+        } else {
+            console.error('❌ Database class is NOT available');
+        }
+    </script>
 </body>
 </html>

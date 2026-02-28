@@ -1,5 +1,16 @@
 // Authentication JavaScript
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🔍 Auth page loaded');
+    
+    // Initialize database first
+    try {
+        await Database.init();
+        console.log('✅ Database initialized in auth.js');
+    } catch (error) {
+        console.error('❌ Database initialization failed:', error);
+        return;
+    }
+    
     initializeAuth();
 });
 
@@ -81,8 +92,8 @@ function handleLogin(e) {
         const user = users.find(u => u.email === email && u.password === password);
         
         if (user) {
-            // Store current user
-            localStorage.setItem('socializers_current_user', JSON.stringify(user));
+            // Store current user in localStorage
+            localStorage.setItem('socializers_current_user_id', user.id.toString());
             
             // Show success message
             showMessage('Login successful! Redirecting...', 'success');
@@ -98,7 +109,7 @@ function handleLogin(e) {
 }
 
 // Handle registration
-function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
@@ -118,40 +129,48 @@ function handleRegister(e) {
     const form = e.target;
     form.classList.add('loading');
     
-    // Simulate API call
-    setTimeout(() => {
-        form.classList.remove('loading');
+    try {
+        // Check if user already exists using database
+        const existingUser = await Database.getUserByEmail(email);
         
-        // Check if user already exists
-        if (users.some(u => u.email === email)) {
+        if (existingUser) {
             showMessage('An account with this email already exists.', 'error');
             return;
         }
         
         // Create new user
         const newUser = {
-            id: users.length + 1,
-            firstName,
-            lastName,
-            email,
-            password,
-            birthday,
-            gender,
-            avatar: `https://picsum.photos/seed/user${users.length + 1}/100/100`,
+            id: Date.now(),
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            password: password,
+            birthday: birthday,
+            gender: gender,
+            avatar: `https://picsum.photos/seed/user${Date.now()}/100/100`,
             createdAt: new Date().toISOString()
         };
         
+        // Save to database
+        await Database.addUser(newUser);
+        
+        // Save to localStorage array (for compatibility)
         users.push(newUser);
-        saveUsers();
+        localStorage.setItem('socializers_users', JSON.stringify(users));
         
-        // Show success message
-        showMessage('Registration successful! Please log in.', 'success');
+        form.classList.remove('loading');
+        showMessage('Account created successfully! You can now log in.', 'success');
         
-        // Redirect to login
+        // Redirect to login after successful registration
         setTimeout(() => {
             window.location.href = 'login.html';
         }, 2000);
-    }, 1000);
+        
+    } catch (error) {
+        console.error('Registration error:', error);
+        form.classList.remove('loading');
+        showMessage('Error creating account. Please try again.', 'error');
+    }
 }
 
 // Validate registration form

@@ -1,6 +1,7 @@
 // ============================================================================
 // DATABASE CLASS - SQL Database Management
 // ============================================================================
+console.log('🗄️ Database.js loaded');
 class Database {
     static DB_NAME = 'socializers_db';
     static DB_VERSION = 1;
@@ -112,6 +113,12 @@ class Database {
 
     static async getAll(storeName, indexName = null, indexValue = null) {
         return new Promise((resolve, reject) => {
+            if (!this.db) {
+                console.error('❌ Database not initialized. Call Database.init() first.');
+                reject(new Error('Database not initialized'));
+                return;
+            }
+            
             const transaction = this.db.transaction([storeName], 'readonly');
             const store = transaction.objectStore(storeName);
             
