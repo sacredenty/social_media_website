@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .test-post {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .action-btn {
+            background: #e4e6eb;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .action-btn:hover {
+            background: #d8dadf;
+        }
+        .comments-section {
+            border-top: 1px solid #e4e6eb;
+            margin-top: 15px;
+            padding: 15px 0;
+            display: none;
+        }
+        .comments-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .debug-info {
+            background: #e3f2fd;
+            border: 1px solid #1877f2;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Comment System Debug Test</h1>
+    
+    <div class="debug-info">
+        <strong>Instructions:</strong><br>
+        1. Click "Comment" button<br>
+        2. Check console for debug logs<br>
+        3. Try typing in the modal<br>
+        4. Submit a comment<br>
+        5. Verify comment appears below
+    </div>
+
+    <div class="test-post">
+        <h3>Test Post</h3>
+        <p>This is a test post for debugging the comment system.</p>
+        <div class="post-actions">
+            <button class="action-btn" onclick="testCommentSystem(1)">
+                <i class="fas fa-comment"></i> Comment
+            </button>
+            <button class="action-btn" onclick="testModalCreation()">
+                <i class="fas fa-bug"></i> Test Modal
+            </button>
+            <button class="action-btn" onclick="testDirectModal()">
+                <i class="fas fa-comment-dots"></i> Test Direct Modal
+            </button>
+        </div>
+        
+        <div class="comments-section">
+            <div class="comments-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // Mock data for testing
+        window.testComments = [
+            {
+                id: 1,
+                postId: 1,
+                author: 'Test User',
+                authorAvatar: 'https://picsum.photos/seed/test/32/32',
+                content: 'This is a test comment',
+                time: 'Just now',
+                likes: 0,
+                liked: false,
+                replies: []
+            }
+        ];
+
+        function testCommentSystem(postId) {
+            console.log('🧪 Testing comment system...');
+            console.log('PostId:', postId);
+            
+            try {
+                // Find post element
+                const postElement = document.querySelector('.test-post');
+                console.log('Post element:', postElement);
+                
+                if (!postElement) {
+                    console.error('❌ Post element not found!');
+                    return;
+                }
+                
+                // Toggle comments section
+                const commentsSection = postElement.querySelector('.comments-section');
+                console.log('Comments section:', commentsSection);
+                console.log('Current display:', commentsSection ? commentsSection.style.display : 'not found');
+                
+                if (!commentsSection) {
+                    console.error('❌ Comments section not found!');
+                    return;
+                }
+                
+                if (commentsSection.style.display === 'none' || commentsSection.style.display === '') {
+                    console.log('✅ Showing comments section');
+                    commentsSection.style.display = 'block';
+                    renderTestComments();
+                } else {
+                    console.log('✅ Hiding comments section');
+                    commentsSection.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('❌ Error in testCommentSystem:', error);
+            }
+        }
+
+        function renderTestComments() {
+            try {
+                const commentsList = document.querySelector('.comments-list');
+                console.log('Comments list:', commentsList);
+                
+                if (!commentsList) {
+                    console.error('❌ Comments list not found!');
+                    return;
+                }
+                
+                if (window.testComments.length === 0) {
+                    commentsList.innerHTML = '<p style="color: #65676b;">No comments yet.</p>';
+                    console.log('✅ No comments placeholder shown');
+                    return;
+                }
+                
+                commentsList.innerHTML = '';
+                window.testComments.forEach(comment => {
+                    const commentEl = document.createElement('div');
+                    commentEl.style.cssText = `
+                        display: flex;
+                        gap: 10px;
+                        margin-bottom: 15px;
+                    `;
+                    
+                    commentEl.innerHTML = `
+                        <img src="${comment.authorAvatar}" style="width: 32px; height: 32px; border-radius: 50%;">
+                        <div style="flex: 1;">
+                            <div style="background-color: #f0f2f5; padding: 8px 12px; border-radius: 18px;">
+                                <strong style="color: #385898;">${comment.author}</strong>
+                                <p style="margin: 4px 0 0 0; font-size: 14px;">${comment.content}</p>
+                            </div>
+                            <div style="font-size: 12px; color: #65676b; margin-top: 4px;">
+                                <span>${comment.time}</span>
+                                <button style="background: none; border: none; color: #65676b; cursor: pointer;">Like</button>
+                                <button style="background: none; border: none; color: #65676b; cursor: pointer;">Reply</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    commentsList.appendChild(commentEl);
+                });
+                
+                console.log('✅ Test comments rendered successfully');
+            } catch (error) {
+                console.error('❌ Error in renderTestComments:', error);
+            }
+        }
+
+        function testModalCreation() {
+            console.log('🎭 Testing modal creation...');
+            
+            try {
+                // Create modal like our comment modal
+                const modalOverlay = document.createElement('div');
+                modalOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                `;
+
+                const modalContent = document.createElement('div');
+                modalContent.style.cssText = `
+                    background-color: white;
+                    border-radius: 12px;
+                    padding: 20px;
+                    max-width: 500px;
+                    width: 90%;
+                `;
+
+                // Create title
+                const title = document.createElement('h2');
+                title.textContent = 'Write a Comment';
+                title.style.cssText = 'margin: 0 0 20px 0;';
+
+                // Create close button
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '&times;';
+                closeBtn.style.cssText = 'background: none; border: none; font-size: 24px; cursor: pointer; position: absolute; top: 15px; right: 15px;';
+
+                // Create textarea
+                const textarea = document.createElement('textarea');
+                textarea.placeholder = 'Test typing here...';
+                textarea.style.cssText = `
+                    width: 100%;
+                    min-height: 80px;
+                    padding: 10px;
+                    border: 1px solid #dddfe2;
+                    border-radius: 8px;
+                    resize: vertical;
+                    outline: none;
+                    font-family: inherit;
+                    font-size: 14px;
+                    box-sizing: border-box;
+                `;
+
+                // Create buttons
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;';
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.style.cssText = 'padding: 10px 20px; border: 1px solid #dddfe2; background: white; border-radius: 6px; cursor: pointer;';
+
+                const confirmBtn = document.createElement('button');
+                confirmBtn.textContent = 'Post Comment';
+                confirmBtn.style.cssText = 'padding: 10px 20px; background: #1877f2; color: white; border: none; border-radius: 6px; cursor: pointer;';
+
+                // Assemble modal
+                modalContent.appendChild(closeBtn);
+                modalContent.appendChild(title);
+                modalContent.appendChild(textarea);
+                buttonsContainer.appendChild(cancelBtn);
+                buttonsContainer.appendChild(confirmBtn);
+                modalContent.appendChild(buttonsContainer);
+                modalOverlay.appendChild(modalContent);
+                document.body.appendChild(modalOverlay);
+
+                console.log('✅ Modal created and attached to DOM');
+
+                // Focus on textarea immediately
+                setTimeout(() => {
+                    textarea.focus();
+                    textarea.select();
+                    console.log('✅ Textarea focused:', document.activeElement === textarea);
+                    
+                    // Test typing
+                    textarea.addEventListener('input', (e) => {
+                        console.log('✅ Typing detected:', e.target.value);
+                    });
+                    
+                    // Test close
+                    const closeModal = () => {
+                        document.body.removeChild(modalOverlay);
+                        console.log('✅ Modal closed');
+                    };
+                    
+                    closeBtn.addEventListener('click', closeModal);
+                    cancelBtn.addEventListener('click', closeModal);
+                    confirmBtn.addEventListener('click', () => {
+                        console.log('✅ Comment submitted:', textarea.value);
+                        closeModal();
+                    });
+                    
+                    modalOverlay.addEventListener('click', (e) => {
+                        if (e.target === modalOverlay) closeModal();
+                    });
+                }, 100);
+                
+            } catch (error) {
+                console.error('❌ Error in testModalCreation:', error);
+            }
+        }
+
+        function testDirectModal() {
+            console.log('⚡ Testing direct modal (like main app)...');
+            
+            // Simulate the exact modal creation from main app
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'modal-overlay';
+            modalOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            modalContent.style.cssText = `
+                background-color: white;
+                border-radius: 12px;
+                padding: 20px;
+                max-width: 500px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+            `;
+
+            // Create title
+            const title = document.createElement('h2');
+            title.textContent = 'Write a Comment';
+            title.style.cssText = 'margin: 0 0 20px 0;';
+
+            // Create close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.style.cssText = 'background: none; border: none; font-size: 24px; cursor: pointer; position: absolute; top: 15px; right: 15px;';
+
+            // Create textarea
+            const textarea = document.createElement('textarea');
+            textarea.id = 'commentContent'; // Same ID as main app
+            textarea.placeholder = 'Write a comment...';
+            textarea.style.cssText = `
+                width: 100%;
+                min-height: 80px;
+                padding: 10px;
+                border: 1px solid #dddfe2;
+                border-radius: 8px;
+                resize: vertical;
+                outline: none;
+                font-family: inherit;
+                font-size: 14px;
+                line-height: 1.4;
+                box-sizing: border-box;
+            `;
+
+            // Create buttons container
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.style.cssText = 'padding: 10px 20px; border: 1px solid #dddfe2; background: white; border-radius: 6px; cursor: pointer;';
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.textContent = 'Post Comment';
+            confirmBtn.style.cssText = 'padding: 10px 20px; background: #1877f2; color: white; border: none; border-radius: 6px; cursor: pointer;';
+
+            // Assemble modal exactly like main app
+            modalContent.appendChild(closeBtn);
+            modalContent.appendChild(title);
+            modalContent.appendChild(textarea);
+            buttonsContainer.appendChild(cancelBtn);
+            buttonsContainer.appendChild(confirmBtn);
+            modalContent.appendChild(buttonsContainer);
+            modalOverlay.appendChild(modalContent);
+            document.body.appendChild(modalOverlay);
+
+            console.log('✅ Direct modal created with same structure as main app');
+
+            // Focus on textarea immediately (same as main app)
+            setTimeout(() => {
+                textarea.focus();
+                textarea.select();
+                console.log('✅ Direct textarea focused:', document.activeElement === textarea);
+                console.log('✅ Textarea value:', textarea.value);
+                console.log('✅ Textarea disabled:', textarea.disabled);
+                
+                // Test typing
+                textarea.addEventListener('input', (e) => {
+                    console.log('✅ Direct typing detected:', e.target.value);
+                });
+                
+                // Test close (same as main app)
+                const closeModal = () => {
+                    document.body.removeChild(modalOverlay);
+                    console.log('✅ Direct modal closed');
+                };
+                
+                closeBtn.addEventListener('click', closeModal);
+                cancelBtn.addEventListener('click', closeModal);
+                confirmBtn.addEventListener('click', () => {
+                    console.log('✅ Direct comment submitted:', textarea.value);
+                    closeModal();
+                });
+                
+                modalOverlay.addEventListener('click', (e) => {
+                    if (e.target === modalOverlay) closeModal();
+                });
+            }, 50); // Same timeout as main app
+        }
+
+        console.log('🚀 Debug test page loaded. Open console to see logs.');
+        console.log('📝 Available tests:');
+        console.log('  - Click "Comment" to test comment toggle');
+        console.log('  - Click "Test Modal" to test basic modal');
+        console.log('  - Click "Test Direct Modal" to test exact main app modal');
+    </script>
+</body>
+</html>
