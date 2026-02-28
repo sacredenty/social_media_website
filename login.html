@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Socializers</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="auth.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="auth-body">
-    <div class="auth-container">
+<body class="auth-body" style="display: block !important; visibility: visible !important; opacity: 1 !important;">
+    <div class="auth-container" style="display: block !important; visibility: visible !important; opacity: 1 !important;">
         <div class="auth-left">
             <div class="auth-logo">
                 <i class="fas fa-users"></i>
@@ -49,6 +47,62 @@
             </div>
         </div>
     </div>
+    
+    <script>
+        // Force show login form
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 Login page DOM loaded');
+            
+            const authContainer = document.querySelector('.auth-container');
+            const authForm = document.querySelector('.auth-form');
+            
+            if (authContainer) {
+                console.log('✅ Auth container found:', authContainer);
+                // Force show the container
+                authContainer.style.display = 'block';
+                authContainer.style.visibility = 'visible';
+                authContainer.style.opacity = '1';
+                authContainer.style.zIndex = '9999';
+                console.log('✅ Forced auth container to be visible');
+            } else {
+                console.error('❌ Auth container not found');
+            }
+            
+            if (authForm) {
+                console.log('✅ Auth form found:', authForm);
+                // Force show the form
+                authForm.style.display = 'block';
+                authForm.style.visibility = 'visible';
+                authForm.style.opacity = '1';
+                authForm.style.zIndex = '10000';
+                console.log('✅ Forced auth form to be visible');
+            } else {
+                console.error('❌ Auth form not found');
+            }
+        });
+        
+        // Debug login form visibility
+        console.log('🔍 Login page loaded');
+        
+        const authContainer = document.querySelector('.auth-container');
+        const authForm = document.querySelector('.auth-form');
+        
+        if (authContainer) {
+            console.log('✅ Auth container found:', authContainer);
+            console.log('Auth container visible:', authContainer.style.display !== 'none');
+            console.log('Auth container computed style:', window.getComputedStyle(authContainer).display);
+        } else {
+            console.error('❌ Auth container not found');
+        }
+        
+        if (authForm) {
+            console.log('✅ Auth form found:', authForm);
+            console.log('Auth form visible:', authForm.style.display !== 'none');
+            console.log('Auth form computed style:', window.getComputedStyle(authForm).display);
+        } else {
+            console.error('❌ Auth form not found');
+        }
+    </script>
     
     <script src="auth.js"></script>
 </body>

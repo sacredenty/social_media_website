@@ -101,13 +101,21 @@ class User {
         console.log('🚪 User.logout() called');
         
         try {
-            // Clear from database first
+            // Clear current session from localStorage
+            localStorage.removeItem('socializers_current_user_id');
+            console.log('✅ User session cleared from localStorage');
+            
+            // Clear database (removes all data including demo accounts)
             await Database.clearAll();
             console.log('✅ All database data cleared');
             
-            // Then clear localStorage session
-            localStorage.removeItem('socializers_current_user_id');
-            console.log('✅ User session cleared from localStorage');
+            // Reinitialize database for fresh start
+            await Database.init();
+            console.log('✅ Database reinitialized');
+            
+            // Reinitialize demo users (will create fresh demo accounts)
+            await User.initializeDemoUsers();
+            console.log('✅ Demo users reinitialized');
             
         } catch (error) {
             console.error('❌ Error during logout:', error);
@@ -907,7 +915,14 @@ class SocialMediaApp {
             // Load current user (should be null after clear)
             this.currentUser = await User.getCurrentUser();
             if (!this.currentUser) {
-                console.log('ℹ️ No user logged in - ready for registration');
+                console.log('ℹ️ No user logged in - redirecting to login page');
+                // Redirect to login page instead of initializing main app
+                window.location.href = 'login.html';
+                return; // Stop initialization
+            } else {
+                console.log('✅ User found:', this.currentUser.displayName);
+                // Only initialize main app if user is logged in
+                await this.initializeMainApp();
             }
             
             // Initialize UI elements
@@ -923,6 +938,32 @@ class SocialMediaApp {
             this.setupEventListeners();
             
             console.log('✅ SocialMediaApp initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Error initializing SocialMediaApp:', error);
+            UI.showNotification('Error initializing application', 'error');
+        }
+    }
+
+    async initializeMainApp() {
+        try {
+            // Initialize UI elements
+            UI.initializeElements();
+            
+            // Load data (should be empty)
+            await this.loadPosts();
+            
+            // Update UI with current user
+            UI.updateProfileUI(this.currentUser);
+            
+            // Setup event listeners
+            this.setupEventListeners();
+            
+            console.log('✅ SocialMediaApp initialized successfully');
+            console.log('📝 Available commands:');
+            console.log('  - window.app.handleComment(postId)');
+            console.log('  - window.app.UI.renderComments(postId, container)');
+            console.log('  - window.restartApp() - Restart application');
             
         } catch (error) {
             console.error('❌ Error initializing SocialMediaApp:', error);
@@ -1394,16 +1435,49 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Make app globally available
         window.app = app;
         
-        // Add global restart function
-        window.restartApp = async () => {
-            await app.restartApp();
-        };
-        
-        console.log('✅ App initialized successfully');
-        console.log('📝 Available commands:');
-        console.log('  - window.app.handleComment(postId)');
-        console.log('  - window.app.UI.renderComments(postId, container)');
-        console.log('  - window.restartApp() - Restart application');
+        // Global functions for inline event handlers
+function showProfileMenu() {
+    const menu = document.getElementById('profileMenu');
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function goToProfile() {
+    window.location.href = 'profile.html';
+}
+
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        if (window.app) {
+            window.app.logout();
+        } else {
+            User.logout();
+        }
+        window.location.href = 'login.html';
+    }
+}
+
+// Close profile menu when clicking outside
+document.addEventListener('click', function(e) {
+    const profileMenu = document.getElementById('profileMenu');
+    const navProfile = document.querySelector('.nav-profile');
+    
+    if (profileMenu && navProfile && !navProfile.contains(e.target)) {
+        profileMenu.style.display = 'none';
+    }
+});
+
+// Add global restart function
+window.restartApp = async () => {
+    await app.restartApp();
+};
+
+console.log('✅ App initialized successfully');
+console.log('📝 Available commands:');
+console.log('  - window.app.handleComment(postId)');
+console.log('  - window.app.UI.renderComments(postId, container)');
+console.log('  - window.restartApp() - Restart application');
         
     } catch (error) {
         console.error('❌ Error initializing app:', error);
