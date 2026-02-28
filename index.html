@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socializers - Connect with Friends</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-users"></i>
+                <span>Socializers</span>
+            </div>
+            <div class="nav-search">
+                <input type="text" placeholder="Search friends, posts, and more...">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active"><i class="fas fa-home"></i></a>
+                <a href="#" class="nav-link"><i class="fas fa-user-friends"></i></a>
+                <a href="#" class="nav-link"><i class="fas fa-bell"></i></a>
+                <a href="#" class="nav-link"><i class="fas fa-envelope"></i></a>
+                <div class="nav-profile" onclick="showProfileMenu()">
+                    <img src="https://picsum.photos/seed/user1/40/40" alt="Profile">
+                    <span>John Doe</span>
+                    <i class="fas fa-caret-down"></i>
+                </div>
+                <div id="profileMenu" class="profile-menu" style="display: none;">
+                    <a href="#" onclick="goToProfile()"><i class="fas fa-user"></i> View Profile</a>
+                    <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar">
+            <div class="sidebar-section">
+                <ul class="sidebar-menu">
+                    <li><a href="#" class="menu-item active"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="#" class="menu-item"><i class="fas fa-user"></i> Profile</a></li>
+                    <li><a href="#" class="menu-item"><i class="fas fa-users"></i> Friends</a></li>
+                    <li><a href="#" class="menu-item"><i class="fas fa-images"></i> Photos</a></li>
+                    <li><a href="#" class="menu-item"><i class="fas fa-video"></i> Videos</a></li>
+                    <li><a href="#" class="menu-item"><i class="fas fa-calendar"></i> Events</a></li>
+                    <li><a href="#" class="menu-item"><i class="fas fa-gamepad"></i> Games</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Center Content -->
+        <main class="center-content">
+            <!-- Create Post -->
+            <div class="create-post">
+                <div class="post-input-area">
+                    <img src="https://picsum.photos/seed/user1/50/50" alt="Profile" class="post-profile-img">
+                    <input type="text" placeholder="What's on your mind, John?" class="post-input">
+                </div>
+                <div class="post-options">
+                    <button class="post-option"><i class="fas fa-video"></i> Live Video</button>
+                    <button class="post-option"><i class="fas fa-image"></i> Photo/Video</button>
+                    <button class="post-option"><i class="fas fa-smile"></i> Feeling/Activity</button>
+                </div>
+            </div>
+
+            <!-- Stories -->
+            <div class="stories-container">
+                <div class="story-item create-story">
+                    <div class="story-plus">+</div>
+                    <span>Create Story</span>
+                </div>
+                <div class="story-item">
+                    <img src="https://picsum.photos/seed/story1/150/200" alt="Story">
+                    <span>Jane Smith</span>
+                </div>
+                <div class="story-item">
+                    <img src="https://picsum.photos/seed/story2/150/200" alt="Story">
+                    <span>Mike Johnson</span>
+                </div>
+                <div class="story-item">
+                    <img src="https://picsum.photos/seed/story3/150/200" alt="Story">
+                    <span>Sarah Williams</span>
+                </div>
+            </div>
+
+            <!-- Posts Feed -->
+            <div class="posts-feed">
+                <!-- Post 1 -->
+                <article class="post">
+                    <div class="post-header">
+                        <img src="https://picsum.photos/seed/user2/50/50" alt="Profile" class="post-author-img">
+                        <div class="post-author-info">
+                            <h4>Jane Smith</h4>
+                            <p>2 hours ago • <i class="fas fa-globe"></i></p>
+                        </div>
+                        <button class="post-menu"><i class="fas fa-ellipsis-h"></i></button>
+                    </div>
+                    <div class="post-content">
+                        <p>Just had an amazing day at the beach! The weather was perfect and the sunset was breathtaking. 🌅</p>
+                        <img src="https://picsum.photos/seed/beach/600/400" alt="Beach sunset" class="post-image">
+                    </div>
+                    <div class="post-stats">
+                        <span><i class="fas fa-thumbs-up"></i> 124</span>
+                        <span><i class="fas fa-comment"></i> 23</span>
+                        <span><i class="fas fa-share"></i> 5</span>
+                    </div>
+                    <div class="post-actions">
+                        <button class="action-btn"><i class="fas fa-thumbs-up"></i> Like</button>
+                        <button class="action-btn"><i class="fas fa-comment"></i> Comment</button>
+                        <button class="action-btn"><i class="fas fa-share"></i> Share</button>
+                    </div>
+                </article>
+
+                <!-- Post 2 -->
+                <article class="post">
+                    <div class="post-header">
+                        <img src="https://picsum.photos/seed/user3/50/50" alt="Profile" class="post-author-img">
+                        <div class="post-author-info">
+                            <h4>Mike Johnson</h4>
+                            <p>5 hours ago • <i class="fas fa-globe"></i></p>
+                        </div>
+                        <button class="post-menu"><i class="fas fa-ellipsis-h"></i></button>
+                    </div>
+                    <div class="post-content">
+                        <p>Excited to announce that I just started my new job as a Software Engineer at TechCorp! 🚀</p>
+                    </div>
+                    <div class="post-stats">
+                        <span><i class="fas fa-thumbs-up"></i> 89</span>
+                        <span><i class="fas fa-comment"></i> 15</span>
+                        <span><i class="fas fa-share"></i> 3</span>
+                    </div>
+                    <div class="post-actions">
+                        <button class="action-btn"><i class="fas fa-thumbs-up"></i> Like</button>
+                        <button class="action-btn"><i class="fas fa-comment"></i> Comment</button>
+                        <button class="action-btn"><i class="fas fa-share"></i> Share</button>
+                    </div>
+                </article>
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside class="right-sidebar">
+            <!-- Your Profile -->
+            <div class="profile-card">
+                <img src="https://picsum.photos/seed/user1/100/100" alt="Profile" class="profile-card-img">
+                <h3>John Doe</h3>
+                <p>Software Developer</p>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span>250</span>
+                        <span>Friends</span>
+                    </div>
+                    <div class="stat">
+                        <span>1.2K</span>
+                        <span>Followers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suggestions -->
+            <div class="suggestions-card">
+                <h3>People You May Know</h3>
+                <div class="suggestion-item">
+                    <img src="https://picsum.photos/seed/suggest1/50/50" alt="Profile">
+                    <div class="suggestion-info">
+                        <h4>Alice Brown</h4>
+                        <p>Mutual friend: Jane Smith</p>
+                    </div>
+                    <button class="add-friend-btn">Add Friend</button>
+                </div>
+                <div class="suggestion-item">
+                    <img src="https://picsum.photos/seed/suggest2/50/50" alt="Profile">
+                    <div class="suggestion-info">
+                        <h4>Bob Wilson</h4>
+                        <p>Went to same university</p>
+                    </div>
+                    <button class="add-friend-btn">Add Friend</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

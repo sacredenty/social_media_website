@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Socializers</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-left">
+            <div class="auth-logo">
+                <i class="fas fa-users"></i>
+                <span>Socializers</span>
+            </div>
+            <h2>Connect with friends and the world around you on Socializers.</h2>
+            <ul class="auth-features">
+                <li><i class="fas fa-share-alt"></i> Share photos and updates with friends</li>
+                <li><i class="fas fa-video"></i> Watch videos and live streams</li>
+                <li><i class="fas fa-gamepad"></i> Play games with your friends</li>
+                <li><i class="fas fa-calendar"></i> Discover events and activities</li>
+            </ul>
+        </div>
+        
+        <div class="auth-right">
+            <div class="auth-form">
+                <h1>Login to Socializers</h1>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <input type="email" id="email" name="email" placeholder="Email address" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" name="password" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="auth-btn">Log In</button>
+                </form>
+                
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
+                
+                <button class="auth-btn secondary" onclick="window.location.href='register.html'">
+                    Create New Account
+                </button>
+                
+                <a href="#" class="forgot-password">Forgot password?</a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="auth.js"></script>
+</body>
+</html>
