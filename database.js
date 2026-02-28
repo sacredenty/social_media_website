@@ -8,11 +8,15 @@ class Database {
 
     static async init() {
         return new Promise((resolve, reject) => {
+            console.log('🗄️ Database.init() called');
+            
             if (this.db) {
+                console.log('✅ Database already initialized');
                 resolve(this.db);
                 return;
             }
-
+            
+            console.log('🔄 Opening database...');
             const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
             
             request.onerror = () => {

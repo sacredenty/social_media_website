@@ -98,11 +98,42 @@ class User {
     }
 
     static async logout() {
+        console.log('🚪 User.logout() called');
+        
         try {
+            // Clear from database first
+            await Database.clearAll();
+            console.log('✅ All database data cleared');
+            
+            // Then clear localStorage session
             localStorage.removeItem('socializers_current_user_id');
-            console.log('✅ User logged out');
+            console.log('✅ User session cleared from localStorage');
+            
         } catch (error) {
             console.error('❌ Error during logout:', error);
+        }
+    }
+
+    static async clearAllData() {
+        try {
+            console.log('🧹 Clearing all application data...');
+            
+            // Clear database
+            await Database.clearAll();
+            
+            // Clear localStorage
+            localStorage.clear();
+            
+            // Clear any app state
+            if (window.app) {
+                window.app.currentUser = null;
+                window.app.posts = [];
+                window.app.sharedPosts = [];
+            }
+            
+            console.log('✅ All data cleared successfully');
+        } catch (error) {
+            console.error('❌ Error clearing data:', error);
         }
     }
 
@@ -137,44 +168,33 @@ class User {
         try {
             const existingUsers = await Database.getAllUsers();
             if (existingUsers && existingUsers.length > 0) {
-                console.log('📝 Demo users already exist');
+                console.log('📝 Users already exist in database, skipping demo initialization');
                 return;
             }
             
-            const demoUsers = [
-                new User({
-                    id: 1,
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    email: 'john.doe@example.com',
-                    password: 'password123',
-                    birthday: '1990-01-01',
-                    gender: 'male'
-                }),
-                new User({
-                    id: 2,
-                    firstName: 'Jane',
-                    lastName: 'Smith',
-                    email: 'jane.smith@example.com',
-                    password: 'password123',
-                    birthday: '1992-05-15',
-                    gender: 'female'
-                })
-            ];
-            
-            for (const user of demoUsers) {
-                await Database.addUser(user);
-            }
-            
-            // Auto-login first demo user
-            const currentUserId = localStorage.getItem('socializers_current_user_id');
-            if (!currentUserId) {
-                await Database.setCurrentUser(demoUsers[0]);
-            }
-            
-            console.log('✅ Demo users initialized in database');
+            console.log('ℹ️ Demo users initialization skipped - no demo users will be created');
         } catch (error) {
-            console.error('❌ Error initializing demo users:', error);
+            console.error('❌ Error checking demo users:', error);
+        }
+    }
+
+    static async restartApp() {
+        try {
+            console.log('🔄 Restarting application...');
+            
+            // Clear all data
+            await User.clearAllData();
+            
+            // Reinitialize database
+            await Database.init();
+            
+            // Reinitialize app
+            await this.init();
+            
+            console.log('✅ Application restarted successfully');
+            
+        } catch (error) {
+            console.error('❌ Error restarting app:', error);
         }
     }
 }
@@ -517,6 +537,11 @@ class UI {
     }
 
     static updateProfileUI(user) {
+        if (!user) {
+            console.warn('updateProfileUI called with null user');
+            return;
+        }
+        
         if (this.elements.navProfileImg) this.elements.navProfileImg.src = user.avatar;
         if (this.elements.navProfileName) this.elements.navProfileName.textContent = user.displayName;
         if (this.elements.postProfileImg) this.elements.postProfileImg.src = user.avatar;
@@ -868,27 +893,30 @@ class SocialMediaApp {
 
     async init() {
         try {
+            // Clear all existing data first
+            await User.clearAllData();
+            console.log('✅ All existing data cleared');
+            
             // Initialize database first
             await Database.init();
             console.log('✅ Database initialized');
             
-            // Initialize demo users
+            // Initialize demo users (now empty)
             await User.initializeDemoUsers();
             
-            // Load current user
+            // Load current user (should be null after clear)
             this.currentUser = await User.getCurrentUser();
             if (!this.currentUser) {
-                console.warn('No user logged in');
-                return;
+                console.log('ℹ️ No user logged in - ready for registration');
             }
             
             // Initialize UI elements
             UI.initializeElements();
             
-            // Load data
+            // Load data (should be empty)
             await this.loadPosts();
             
-            // Update UI with current user
+            // Update UI with current user (should show login state)
             UI.updateProfileUI(this.currentUser);
             
             // Setup event listeners
@@ -1319,19 +1347,39 @@ class SocialMediaApp {
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
+// Add global debug function
+window.testClick = () => {
+    console.log('🧪 Test click function called');
+    console.log('Active element:', document.activeElement);
+    console.log('Clicks should work now');
+    
+    // Test if we can click on body
+    document.body.addEventListener('click', (e) => {
+        console.log('✅ Body clicked at:', e.target);
+        console.log('Event type:', e.type);
+    });
+};
+
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Initializing Social Media App...');
     
     try {
-        // Initialize demo users first
-        User.initializeDemoUsers();
+        // Clear all existing data first
+        await User.clearAllData();
+        console.log('✅ All existing data cleared');
         
-        // Load current user
-        const currentUser = User.getCurrentUser();
+        // Initialize database first
+        await Database.init();
+        console.log('✅ Database initialized');
+        
+        // Initialize demo users (now empty)
+        await User.initializeDemoUsers();
+        
+        // Load current user (should be null after clear)
+        const currentUser = await User.getCurrentUser();
         if (!currentUser) {
-            console.warn('No user logged in');
-            return;
+            console.log('ℹ️ No user logged in - ready for registration');
         }
         
         // Initialize UI elements
@@ -1341,15 +1389,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const app = new SocialMediaApp();
         
         // Initialize app
-        app.init();
+        await app.init();
         
         // Make app globally available
         window.app = app;
         
+        // Add global restart function
+        window.restartApp = async () => {
+            await app.restartApp();
+        };
+        
         console.log('✅ App initialized successfully');
-        console.log('📝 Available for testing:');
+        console.log('📝 Available commands:');
         console.log('  - window.app.handleComment(postId)');
         console.log('  - window.app.UI.renderComments(postId, container)');
+        console.log('  - window.restartApp() - Restart application');
         
     } catch (error) {
         console.error('❌ Error initializing app:', error);
