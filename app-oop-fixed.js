@@ -319,7 +319,193 @@ class User {
             console.error('❌ Error restarting app:', error);
         }
     }
+
+    static async searchFriends(query) {
+        try {
+            const currentUser = await User.getCurrentUser();
+            if (!currentUser) return [];
+            
+            const friends = await Friend.getFriends(currentUser.id);
+            
+            return friends
+                .filter(friend => 
+                    friend.displayName?.toLowerCase().includes(query.toLowerCase()) ||
+                    friend.firstName?.toLowerCase().includes(query.toLowerCase()) ||
+                    friend.lastName?.toLowerCase().includes(query.toLowerCase()) ||
+                    friend.email?.toLowerCase().includes(query.toLowerCase())
+                )
+                .slice(0, 2)
+                .map(friend => ({
+                    type: 'friend',
+                    id: friend.id,
+                    title: friend.displayName || friend.email,
+                    subtitle: 'Friend',
+                    avatar: friend.avatar,
+                    data: friend
+                }));
+        } catch (error) {
+            console.error('❌ Error searching friends:', error);
+            return [];
+        }
+    }
+
+    static displayResults(results) {
+        const resultsContainer = document.getElementById('searchResults');
+        
+        if (!resultsContainer) {
+            console.error('❌ Search results container not found!');
+            return;
+        }
+        
+        if (results.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="search-no-results">
+                    <i class="fas fa-search"></i>
+                    <p>No results found</p>
+                </div>
+            `;
+        } else {
+            resultsContainer.innerHTML = results.map(result => this.createResultItem(result)).join('');
+        }
+        
+        resultsContainer.classList.add('active');
+    }
+
+    static createResultItem(result) {
+        const typeIcon = {
+            user: 'fa-user',
+            post: 'fa-file-alt',
+            friend: 'fa-user-friends'
+        };
+
+        return `
+            <div class="search-result-item" onclick="performSearchAction('${result.type}', ${result.id})">
+                <div class="search-result-header">
+                    <img src="${result.avatar}" alt="${result.title}" class="search-result-avatar">
+                    <div>
+                        <div class="search-result-title">${result.title}</div>
+                        <div class="search-result-subtitle">${result.subtitle}</div>
+                    </div>
+                    <span class="search-result-type">
+                        <i class="fas ${typeIcon[result.type]}"></i> ${result.type}
+                    </span>
+                </div>
+                ${result.content ? `<div class="search-result-content">${this.truncateText(result.content, 100)}</div>` : ''}
+            </div>
+        `;
+    }
+
+    static truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    }
+
+    static handleResultClick(type, id) {
+        this.hideResults();
+        document.getElementById('searchInput').value = '';
+        
+        switch (type) {
+            case 'user':
+                window.location.href = `profile.html?userId=${id}`;
+                break;
+            case 'post':
+                // Scroll to post and highlight it
+                this.scrollToPost(id);
+                break;
+            case 'friend':
+                window.location.href = `profile.html?userId=${id}`;
+                break;
+        }
+    }
+
+    static scrollToPost(postId) {
+        const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+        if (postElement) {
+            postElement.scrollIntoView({ behavior: 'smooth' });
+            postElement.style.backgroundColor = '#fff3cd';
+            setTimeout(() => {
+                postElement.style.backgroundColor = '';
+            }, 2000);
+        }
+    }
+
+    static showLoading() {
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = `
+            <div class="search-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Searching...</p>
+            </div>
+        `;
+        resultsContainer.classList.add('active');
+    }
+
+    static showError() {
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = `
+            <div class="search-no-results">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error searching. Please try again.</p>
+            </div>
+        `;
+        resultsContainer.classList.add('active');
+    }
+
+    static hideResults() {
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.classList.remove('active');
+    }
+
+    static initializeSearch() {
+        const searchInput = document.getElementById('searchInput');
+        
+        if (!searchInput) {
+            console.error('❌ Search input not found!');
+            return;
+        }
+
+        // Real-time search with debouncing
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(this.searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length >= 2) {
+                this.searchTimeout = setTimeout(() => {
+                    this.performSearch(query);
+                }, 300); // 300ms debounce
+            } else {
+                this.hideResults();
+            }
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.nav-search')) {
+                this.hideResults();
+            }
+        });
+
+        // Handle escape key
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.hideResults();
+                searchInput.blur();
+            }
+        });
+    }
 }
+
+// Global search action function
+function performSearchAction(type, query) {
+    if (typeof Search !== 'undefined') {
+        Search.performSearch(query);
+    } else {
+        console.error('Search class not loaded yet');
+    }
+}
+
+// Make Search class globally available
+window.Search = Search;
 
 // ============================================================================
 // POST CLASS - Handles post operations with SQL Database

@@ -16,8 +16,8 @@
                 <span>Socializers</span>
             </div>
             <div class="nav-search">
-                <input type="text" id="searchInput" placeholder="Search friends, posts, and more..." onkeydown="if(event.key === 'Enter') { event.preventDefault(); if(typeof Search !== 'undefined') { Search.performSearch(this.value); } else { console.error('Search class not loaded yet'); } }">
-                <i class="fas fa-search" onclick="if(typeof Search !== 'undefined') { Search.performSearch(document.getElementById('searchInput').value); } else { console.error('Search class not loaded yet'); }" style="cursor: pointer;"></i>
+                <input type="text" id="searchInput" placeholder="Search friends, posts, and more..." onkeydown="if(event.key === 'Enter') { event.preventDefault(); performSearchAction('search', this.value); }">
+                <i class="fas fa-search" onclick="performSearchAction('search', document.getElementById('searchInput').value)" style="cursor: pointer;"></i>
                 <div id="searchResults" class="search-results"></div>
             </div>
             <div class="nav-links">
