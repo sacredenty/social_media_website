@@ -101,21 +101,17 @@ class User {
         console.log('🚪 User.logout() called');
         
         try {
-            // Clear current session from localStorage
+            // Clear current session from localStorage only
             localStorage.removeItem('socializers_current_user_id');
             console.log('✅ User session cleared from localStorage');
             
-            // Clear database (removes all data including demo accounts)
-            await Database.clearAll();
-            console.log('✅ All database data cleared');
+            // DON'T clear database - preserve all users and their content
+            console.log('ℹ️ Preserving all user data during logout');
             
-            // Reinitialize database for fresh start
-            await Database.init();
-            console.log('✅ Database reinitialized');
+            // DON'T reinitialize database - keep existing data
+            // DON'T reinitialize demo users - keep existing users
             
-            // Reinitialize demo users (will create fresh demo accounts)
-            await User.initializeDemoUsers();
-            console.log('✅ Demo users reinitialized');
+            console.log('✅ Logout completed (user data preserved)');
             
         } catch (error) {
             console.error('❌ Error during logout:', error);
@@ -124,12 +120,14 @@ class User {
 
     static async clearAllData() {
         try {
-            console.log('🧹 Clearing all application data...');
+            console.log('🧹 WARNING: Clearing ALL application data including users, posts, and comments!');
+            console.log('⚠️ This will delete ALL user accounts and content permanently!');
             
             // Check if Database is available before using it
             if (typeof Database !== 'undefined') {
-                // Clear database
+                // Clear database - DESTRUCTIVE OPERATION
                 await Database.clearAll();
+                console.log('❌ All database data cleared - all users deleted');
             } else {
                 console.warn('⚠️ Database class not available, skipping database clear');
             }
@@ -144,7 +142,7 @@ class User {
                 window.app.sharedPosts = [];
             }
             
-            console.log('✅ All data cleared successfully');
+            console.log('❌ ALL DATA CLEARED - Application reset to factory state');
         } catch (error) {
             console.error('❌ Error clearing data:', error);
         }
@@ -162,14 +160,38 @@ class User {
 
     static async register(userData) {
         try {
+            console.log('🔄 User.register called with:', userData);
+            
+            // Ensure database is initialized
+            if (!Database.db) {
+                console.log('🔄 Database not initialized, initializing now...');
+                await Database.init();
+            }
+            
             // Check if user already exists
+            console.log('🔍 Checking if user already exists:', userData.email);
             const existingUser = await Database.getUserByEmail(userData.email);
             if (existingUser) {
+                console.log('❌ User already exists:', existingUser);
                 throw new Error('User with this email already exists');
             }
             
+            console.log('✅ User does not exist, creating new user...');
             const newUser = new User(userData);
-            await Database.addUser(newUser);
+            console.log('👤 New user object created:', newUser);
+            
+            console.log('💾 Saving user to database...');
+            const result = await Database.addUser(newUser);
+            console.log('✅ User saved to database with ID:', result);
+            
+            // Verify the user was actually saved
+            const savedUser = await Database.getUserByEmail(userData.email);
+            if (savedUser) {
+                console.log('✅ User verification successful - user was saved:', savedUser);
+            } else {
+                console.error('❌ User verification failed - user was not saved!');
+            }
+            
             return newUser;
         } catch (error) {
             console.error('❌ Error during registration:', error);
@@ -233,16 +255,16 @@ class User {
         try {
             console.log('🔄 Restarting application...');
             
-            // Clear all data
-            await User.clearAllData();
+            // Don't clear user data - preserve all users and their content
+            console.log('ℹ️ Preserving user data during restart');
             
-            // Reinitialize database
+            // Reinitialize database (won't clear existing data)
             await Database.init();
             
-            // Reinitialize app
+            // Reinitialize app state only
             await this.init();
             
-            console.log('✅ Application restarted successfully');
+            console.log('✅ Application restarted successfully (user data preserved)');
             
         } catch (error) {
             console.error('❌ Error restarting app:', error);

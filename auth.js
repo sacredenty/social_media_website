@@ -150,6 +150,8 @@ async function handleRegister(e) {
     const birthday = formData.get('birthday');
     const gender = formData.get('gender');
     
+    console.log('📝 Registration attempt:', { firstName, lastName, email, birthday, gender });
+    
     // Validate form
     if (!validateRegistrationForm(firstName, lastName, email, password, birthday, gender)) {
         return;
@@ -160,6 +162,14 @@ async function handleRegister(e) {
     form.classList.add('loading');
     
     try {
+        // Ensure database is initialized
+        if (!Database.db) {
+            console.log('🔄 Initializing database for registration...');
+            await Database.init();
+        }
+        
+        console.log('🔄 Calling User.register...');
+        
         // Use User class for registration
         const newUser = await User.register({
             firstName: firstName,
@@ -170,6 +180,8 @@ async function handleRegister(e) {
             gender: gender
         });
         
+        console.log('✅ User registered successfully:', newUser);
+        
         form.classList.remove('loading');
         showMessage('Account created successfully! You can now log in.', 'success');
         
@@ -179,7 +191,7 @@ async function handleRegister(e) {
         }, 2000);
         
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('❌ Registration error:', error);
         form.classList.remove('loading');
         showMessage(error.message || 'Error creating account. Please try again.', 'error');
     }
