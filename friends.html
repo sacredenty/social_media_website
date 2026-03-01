@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends - Socializers</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="friends.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-users"></i>
+                <span>Socializers</span>
+            </div>
+            <div class="nav-center">
+                <div class="nav-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search Socializers">
+                </div>
+            </div>
+            <div class="nav-right">
+                <div class="nav-profile">
+                    <img src="https://picsum.photos/seed/user1/40/40" alt="Profile">
+                    <span>John Doe</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar">
+            <div class="sidebar-section">
+                <ul class="sidebar-menu">
+                    <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="friends.html" class="active"><i class="fas fa-user-friends"></i> Friends</a></li>
+                    <li><a href="#"><i class="fas fa-bell"></i> Notifications</a></li>
+                    <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Center Content -->
+        <main class="center-content">
+            <div class="friends-container">
+                <h1>Friends</h1>
+                
+                <!-- Friend Requests Section -->
+                <div class="friend-requests-section">
+                    <h2>Friend Requests</h2>
+                    <div id="friendRequests" class="friend-requests-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading friend requests...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Friends Section -->
+                <div class="current-friends-section">
+                    <h2>Your Friends</h2>
+                    <div id="currentFriends" class="friends-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading friends...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside class="right-sidebar">
+            <!-- Your Profile -->
+            <div class="profile-card">
+                <img src="https://picsum.photos/seed/user1/80/80" alt="Profile" class="profile-card-img">
+                <h3>John Doe</h3>
+                <p>Software Developer</p>
+                <button class="btn btn-primary btn-sm">Edit Profile</button>
+            </div>
+
+            <!-- Suggested Friends -->
+            <div class="suggestions">
+                <h3>People You May Know</h3>
+                <div id="suggestedFriends" class="suggestions-list">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading suggestions...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="database.js"></script>
+    <script src="app-oop-fixed.js"></script>
+    <script>
+        // Friends Page Controller
+        class FriendsPage {
+            constructor() {
+                this.currentUser = null;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    // Initialize database first
+                    if (typeof Database !== 'undefined') {
+                        await Database.init();
+                    }
+                    
+                    this.currentUser = await User.getCurrentUser();
+                    if (!this.currentUser) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    
+                    await this.loadFriendRequests();
+                    await this.loadCurrentFriends();
+                    await this.loadSuggestedFriends();
+                    this.updateProfileUI();
+                } catch (error) {
+                    console.error('❌ Error initializing friends page:', error);
+                    window.location.href = 'login.html';
+                }
+            }
+
+            async loadFriendRequests() {
+                try {
+                    const requests = await Friend.getPendingRequests(this.currentUser.id);
+                    const container = document.getElementById('friendRequests');
+                    
+                    if (requests.length === 0) {
+                        container.innerHTML = `
+                            <div class="no-requests">
+                                <i class="fas fa-user-plus" style="font-size: 48px; margin-bottom: 20px; color: #65676b;"></i>
+                                <h3>No pending friend requests</h3>
+                                <p>When someone sends you a friend request, it will appear here.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = '';
+                    for (const request of requests) {
+                        const fromUser = await Database.getUserById(request.fromUserId);
+                        if (fromUser) {
+                            const requestElement = this.createFriendRequestElement(request, fromUser);
+                            container.appendChild(requestElement);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Error loading friend requests:', error);
+                    document.getElementById('friendRequests').innerHTML = `
+                        <div class="error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error loading friend requests</p>
+                        </div>
+                    `;
+                }
+            }
+
+            async loadCurrentFriends() {
+                try {
+                    const friends = await Friend.getFriends(this.currentUser.id);
+                    const container = document.getElementById('currentFriends');
+                    
+                    if (friends.length === 0) {
+                        container.innerHTML = `
+                            <div class="no-friends">
+                                <i class="fas fa-user-friends" style="font-size: 48px; margin-bottom: 20px; color: #65676b;"></i>
+                                <h3>No friends yet</h3>
+                                <p>Start connecting with people to see your friends here.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = '';
+                    friends.forEach(friend => {
+                        const friendElement = this.createFriendElement(friend);
+                        container.appendChild(friendElement);
+                    });
+                } catch (error) {
+                    console.error('❌ Error loading friends:', error);
+                    document.getElementById('currentFriends').innerHTML = `
+                        <div class="error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error loading friends</p>
+                        </div>
+                    `;
+                }
+            }
+
+            async loadSuggestedFriends() {
+                try {
+                    const allUsers = await Database.getAllUsers();
+                    const friends = await Friend.getFriends(this.currentUser.id);
+                    const pendingRequests = await Friend.getPendingRequests(this.currentUser.id);
+                    
+                    // Filter out current user, existing friends, and pending requests
+                    const friendIds = friends.map(f => f.id);
+                    const pendingIds = pendingRequests.map(r => r.fromUserId).concat(pendingRequests.map(r => r.toUserId));
+                    
+                    const suggestions = allUsers.filter(user => 
+                        user.id !== this.currentUser.id && 
+                        !friendIds.includes(user.id) && 
+                        !pendingIds.includes(user.id)
+                    ).slice(0, 5); // Show max 5 suggestions
+
+                    const container = document.getElementById('suggestedFriends');
+                    
+                    if (suggestions.length === 0) {
+                        container.innerHTML = `
+                            <p style="color: #65676b; text-align: center;">No suggestions available</p>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = '';
+                    suggestions.forEach(user => {
+                        const suggestionElement = this.createSuggestionElement(user);
+                        container.appendChild(suggestionElement);
+                    });
+                } catch (error) {
+                    console.error('❌ Error loading suggestions:', error);
+                    document.getElementById('suggestedFriends').innerHTML = `
+                        <p style="color: #65676b; text-align: center;">Error loading suggestions</p>
+                    `;
+                }
+            }
+
+            createFriendRequestElement(request, fromUser) {
+                const element = document.createElement('div');
+                element.className = 'friend-request';
+                element.innerHTML = `
+                    <img src="${fromUser.avatar}" alt="${fromUser.displayName}" class="request-avatar">
+                    <div class="request-info">
+                        <h4>${fromUser.displayName}</h4>
+                        <p>wants to be your friend</p>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn btn-primary btn-sm" onclick="friendsPage.acceptRequest(${request.id})">
+                            <i class="fas fa-check"></i> Accept
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="friendsPage.declineRequest(${request.id})">
+                            <i class="fas fa-times"></i> Decline
+                        </button>
+                    </div>
+                `;
+                return element;
+            }
+
+            createFriendElement(friend) {
+                const element = document.createElement('div');
+                element.className = 'friend-item';
+                element.innerHTML = `
+                    <img src="${friend.avatar}" alt="${friend.displayName}" class="friend-avatar">
+                    <div class="friend-info">
+                        <h4>${friend.displayName}</h4>
+                        <p>${friend.email}</p>
+                    </div>
+                    <div class="friend-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="friendsPage.viewProfile('${friend.id}')">
+                            <i class="fas fa-user"></i> Profile
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="friendsPage.removeFriend('${friend.id}')">
+                            <i class="fas fa-user-minus"></i> Remove
+                        </button>
+                    </div>
+                `;
+                return element;
+            }
+
+            createSuggestionElement(user) {
+                const element = document.createElement('div');
+                element.className = 'suggestion-item';
+                element.innerHTML = `
+                    <img src="${user.avatar}" alt="${user.displayName}" class="suggestion-avatar">
+                    <div class="suggestion-info">
+                        <h4>${user.displayName}</h4>
+                        <p>${user.email}</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="friendsPage.addFriend('${user.id}')">
+                        <i class="fas fa-user-plus"></i> Add Friend
+                    </button>
+                `;
+                return element;
+            }
+
+            async acceptRequest(requestId) {
+                try {
+                    await Friend.acceptRequest(requestId);
+                    await this.loadFriendRequests();
+                    await this.loadCurrentFriends();
+                    UI.showNotification('Friend request accepted!', 'success');
+                } catch (error) {
+                    console.error('❌ Error accepting request:', error);
+                    UI.showNotification('Error accepting request', 'error');
+                }
+            }
+
+            async declineRequest(requestId) {
+                try {
+                    await Friend.declineRequest(requestId);
+                    await this.loadFriendRequests();
+                    UI.showNotification('Friend request declined', 'info');
+                } catch (error) {
+                    console.error('❌ Error declining request:', error);
+                    UI.showNotification('Error declining request', 'error');
+                }
+            }
+
+            async addFriend(userId) {
+                try {
+                    await Friend.sendRequest(this.currentUser.id, parseInt(userId));
+                    await this.loadSuggestedFriends();
+                    UI.showNotification('Friend request sent!', 'success');
+                } catch (error) {
+                    console.error('❌ Error sending friend request:', error);
+                    UI.showNotification('Error sending request', 'error');
+                }
+            }
+
+            async removeFriend(friendId) {
+                try {
+                    await Database.deleteFriendship(this.currentUser.id, parseInt(friendId));
+                    await this.loadCurrentFriends();
+                    await this.loadSuggestedFriends();
+                    UI.showNotification('Friend removed', 'info');
+                } catch (error) {
+                    console.error('❌ Error removing friend:', error);
+                    UI.showNotification('Error removing friend', 'error');
+                }
+            }
+
+            viewProfile(userId) {
+                // For now, just go to profile page
+                window.location.href = 'profile.html';
+            }
+
+            updateProfileUI() {
+                const navProfileImg = document.querySelector('.nav-profile img');
+                const navProfileName = document.querySelector('.nav-profile span');
+                const profileCardImg = document.querySelector('.profile-card-img');
+                const profileCardName = document.querySelector('.profile-card h3');
+                
+                if (navProfileImg) navProfileImg.src = this.currentUser.avatar;
+                if (navProfileName) navProfileName.textContent = this.currentUser.displayName;
+                if (profileCardImg) profileCardImg.src = this.currentUser.avatar;
+                if (profileCardName) profileCardName.textContent = this.currentUser.displayName;
+            }
+        }
+
+        // Initialize the friends page
+        let friendsPage;
+        document.addEventListener('DOMContentLoaded', async function() {
+            friendsPage = new FriendsPage();
+        });
+    </script>
+</body>
+</html>

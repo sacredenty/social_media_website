@@ -113,8 +113,22 @@ class Database {
             const sharedPostStore = this.db.createObjectStore('sharedPosts', { keyPath: 'id', autoIncrement: true });
             sharedPostStore.createIndex('sharedBy', 'sharedBy');
             sharedPostStore.createIndex('originalPostId', 'originalPostId');
-            sharedPostStore.createIndex('time', 'time');
             console.log('✅ Shared posts store created');
+        }
+
+        if (!this.db.objectStoreNames.contains('friendRequests')) {
+            const friendRequestStore = this.db.createObjectStore('friendRequests', { keyPath: 'id', autoIncrement: true });
+            friendRequestStore.createIndex('fromUserId', 'fromUserId');
+            friendRequestStore.createIndex('toUserId', 'toUserId');
+            friendRequestStore.createIndex('status', 'status');
+            console.log('✅ Friend requests store created');
+        }
+
+        if (!this.db.objectStoreNames.contains('friendships')) {
+            const friendshipStore = this.db.createObjectStore('friendships', { keyPath: 'id', autoIncrement: true });
+            friendshipStore.createIndex('userId', 'userId');
+            friendshipStore.createIndex('friendId', 'friendId');
+            console.log('✅ Friendships store created');
         }
     }
 
@@ -379,6 +393,45 @@ class Database {
             console.log('✅ All database tables cleared');
         } catch (error) {
             console.error('❌ Error clearing database:', error);
+        }
+    }
+
+    static async addFriendRequest(friendRequest) {
+        return this.add('friendRequests', friendRequest);
+    }
+
+    static async getFriendRequest(id) {
+        return this.get('friendRequests', id);
+    }
+
+    static async getAllFriendRequests() {
+        return this.getAll('friendRequests');
+    }
+
+    static async updateFriendRequest(friendRequest) {
+        return this.update('friendRequests', friendRequest.id, friendRequest);
+    }
+
+    static async deleteFriendRequest(id) {
+        return this.delete('friendRequests', id);
+    }
+
+    static async addFriendship(friendship) {
+        return this.add('friendships', friendship);
+    }
+
+    static async getAllFriendships() {
+        return this.getAll('friendships');
+    }
+
+    static async deleteFriendship(userId, friendId) {
+        const friendships = await this.getAllFriendships();
+        const toDelete = friendships.find(f => 
+            (f.userId === userId && f.friendId === friendId) ||
+            (f.userId === friendId && f.friendId === userId)
+        );
+        if (toDelete) {
+            return this.delete('friendships', toDelete.id);
         }
     }
 

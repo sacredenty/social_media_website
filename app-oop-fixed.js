@@ -457,8 +457,157 @@ class Post {
 }
 
 // ============================================================================
-// SHARED POST CLASS - Handles shared post operations
+// FRIEND CLASS - Handles friend relationships and requests
 // ============================================================================
+class Friend {
+    constructor(friendData) {
+        this.id = friendData.id || Date.now();
+        this.fromUserId = friendData.fromUserId;
+        this.toUserId = friendData.toUserId;
+        this.status = friendData.status || 'pending'; // pending, accepted, declined
+        this.createdAt = friendData.createdAt || new Date().toISOString();
+        this.respondedAt = friendData.respondedAt || null;
+    }
+
+    static async sendRequest(fromUserId, toUserId) {
+        try {
+            // Check if request already exists
+            const existingRequests = await this.getRequestsByUsers(fromUserId, toUserId);
+            if (existingRequests.length > 0) {
+                throw new Error('Friend request already exists');
+            }
+
+            const friendRequest = new Friend({
+                fromUserId,
+                toUserId,
+                status: 'pending'
+            });
+
+            const result = await Database.addFriendRequest(friendRequest);
+            console.log('✅ Friend request sent:', result);
+            return friendRequest;
+        } catch (error) {
+            console.error('❌ Error sending friend request:', error);
+            throw error;
+        }
+    }
+
+    static async acceptRequest(requestId) {
+        try {
+            const request = await Database.getFriendRequest(requestId);
+            if (!request) {
+                throw new Error('Friend request not found');
+            }
+
+            request.status = 'accepted';
+            request.respondedAt = new Date().toISOString();
+            await Database.updateFriendRequest(request);
+
+            // Create friendship entries for both users
+            await Database.addFriendship({
+                userId: request.fromUserId,
+                friendId: request.toUserId,
+                createdAt: new Date().toISOString()
+            });
+            
+            await Database.addFriendship({
+                userId: request.toUserId,
+                friendId: request.fromUserId,
+                createdAt: new Date().toISOString()
+            });
+
+            console.log('✅ Friend request accepted');
+            return request;
+        } catch (error) {
+            console.error('❌ Error accepting friend request:', error);
+            throw error;
+        }
+    }
+
+    static async declineRequest(requestId) {
+        try {
+            const request = await Database.getFriendRequest(requestId);
+            if (!request) {
+                throw new Error('Friend request not found');
+            }
+
+            request.status = 'declined';
+            request.respondedAt = new Date().toISOString();
+            await Database.updateFriendRequest(request);
+
+            console.log('✅ Friend request declined');
+            return request;
+        } catch (error) {
+            console.error('❌ Error declining friend request:', error);
+            throw error;
+        }
+    }
+
+    static async cancelRequest(requestId) {
+        try {
+            await Database.deleteFriendRequest(requestId);
+            console.log('✅ Friend request cancelled');
+        } catch (error) {
+            console.error('❌ Error cancelling friend request:', error);
+            throw error;
+        }
+    }
+
+    static async getRequestsByUsers(fromUserId, toUserId) {
+        try {
+            const allRequests = await Database.getAllFriendRequests();
+            return allRequests.filter(req => 
+                (req.fromUserId === fromUserId && req.toUserId === toUserId) ||
+                (req.fromUserId === toUserId && req.toUserId === fromUserId)
+            );
+        } catch (error) {
+            console.error('❌ Error getting requests:', error);
+            return [];
+        }
+    }
+
+    static async getPendingRequests(userId) {
+        try {
+            const allRequests = await Database.getAllFriendRequests();
+            return allRequests.filter(req => 
+                req.toUserId === userId && req.status === 'pending'
+            );
+        } catch (error) {
+            console.error('❌ Error getting pending requests:', error);
+            return [];
+        }
+    }
+
+    static async getFriends(userId) {
+        try {
+            const friendships = await Database.getAllFriendships();
+            const userFriendships = friendships.filter(friendship => 
+                friendship.userId === userId
+            );
+            
+            const friendIds = userFriendships.map(f => f.friendId);
+            const allUsers = await Database.getAllUsers();
+            
+            return allUsers.filter(user => friendIds.includes(user.id));
+        } catch (error) {
+            console.error('❌ Error getting friends:', error);
+            return [];
+        }
+    }
+
+    static async areFriends(userId1, userId2) {
+        try {
+            const friendships = await Database.getAllFriendships();
+            return friendships.some(f => 
+                (f.userId === userId1 && f.friendId === userId2) ||
+                (f.userId === userId2 && f.friendId === userId1)
+            );
+        } catch (error) {
+            console.error('❌ Error checking friendship:', error);
+            return false;
+        }
+    }
+}
 class SharedPost {
     constructor(sharedPostData) {
         this.id = sharedPostData.id || Date.now();
@@ -766,7 +915,7 @@ class UI {
             <div class="post-header">
                 <img src="${post.avatar}" alt="Profile" class="post-author-img">
                 <div class="post-author-info">
-                    <h4>${post.author}</h4>
+                    <h4 data-author-id="${post.authorId || ''}">${post.author}</h4>
                     <p>${post.time} • <i class="fas fa-globe"></i></p>
                 </div>
                 <button class="post-menu"><i class="fas fa-ellipsis-h"></i></button>
@@ -789,6 +938,9 @@ class UI {
                 </button>
                 <button class="action-btn" onclick="app.handleShare(this.closest('.post'))">
                     <i class="fas fa-share"></i> Share
+                </button>
+                <button class="add-friend-btn" onclick="app.handleAddFriend(event)" data-author="${post.author}">
+                    <i class="fas fa-user-plus"></i> Add Friend
                 </button>
             </div>
             <div class="comments-section" style="display: none;">
@@ -838,6 +990,9 @@ class UI {
                 </button>
                 <button class="action-btn" onclick="app.handleShare(this.closest('.post'))">
                     <i class="fas fa-share"></i> Share
+                </button>
+                <button class="add-friend-btn" onclick="app.handleAddFriend(event)" data-author="${post.originalAuthor}">
+                    <i class="fas fa-user-plus"></i> Add Friend
                 </button>
             </div>
             <div class="comments-section" style="display: none;">
@@ -1508,21 +1663,80 @@ class SocialMediaApp {
         }
     }
 
-    handleAddFriend(e) {
+    async handleAddFriend(e) {
         const button = e.currentTarget;
+        const postElement = button.closest('.post');
         
-        if (button.textContent === 'Add Friend') {
-            button.textContent = 'Friend Request Sent';
-            button.style.backgroundColor = '#e4e6eb';
-            button.style.color = '#1c1e21';
-            UI.showNotification('Friend request sent!');
-        } else if (button.textContent === 'Friend Request Sent') {
-            button.textContent = 'Cancel Request';
-        } else if (button.textContent === 'Cancel Request') {
-            button.textContent = 'Add Friend';
-            button.style.backgroundColor = '#1877f2';
-            button.style.color = 'white';
-            UI.showNotification('Friend request cancelled!');
+        if (!postElement || !this.currentUser) {
+            UI.showNotification('Please log in to add friends', 'error');
+            return;
+        }
+
+        // Get the post author's user ID (we'll need to enhance post data to include this)
+        const postAuthor = postElement.querySelector('.post-author-info h4')?.textContent;
+        
+        if (!postAuthor) {
+            UI.showNotification('Unable to identify user', 'error');
+            return;
+        }
+
+        try {
+            // Find the target user by display name
+            const allUsers = await Database.getAllUsers();
+            const targetUser = allUsers.find(user => user.displayName === postAuthor);
+            
+            if (!targetUser) {
+                UI.showNotification('User not found', 'error');
+                return;
+            }
+
+            // Check if trying to add self
+            if (targetUser.id === this.currentUser.id) {
+                UI.showNotification('You cannot add yourself as a friend', 'error');
+                return;
+            }
+
+            // Check current friendship status
+            const areAlreadyFriends = await Friend.areFriends(this.currentUser.id, targetUser.id);
+            if (areAlreadyFriends) {
+                UI.showNotification('You are already friends with ' + targetUser.displayName, 'info');
+                return;
+            }
+
+            // Check for existing requests
+            const existingRequests = await Friend.getRequestsByUsers(this.currentUser.id, targetUser.id);
+            const myRequest = existingRequests.find(req => req.fromUserId === this.currentUser.id);
+            const theirRequest = existingRequests.find(req => req.fromUserId === targetUser.id);
+
+            if (myRequest) {
+                if (myRequest.status === 'pending') {
+                    // Cancel my pending request
+                    await Friend.cancelRequest(myRequest.id);
+                    button.textContent = 'Add Friend';
+                    button.style.backgroundColor = '#1877f2';
+                    button.style.color = 'white';
+                    UI.showNotification('Friend request cancelled!');
+                }
+            } else if (theirRequest && theirRequest.status === 'pending') {
+                // Accept their request
+                await Friend.acceptRequest(theirRequest.id);
+                button.textContent = 'Friends';
+                button.style.backgroundColor = '#e4e6eb';
+                button.style.color = '#1c1e21';
+                button.disabled = true;
+                UI.showNotification('You are now friends with ' + targetUser.displayName + '!');
+            } else {
+                // Send new friend request
+                await Friend.sendRequest(this.currentUser.id, targetUser.id);
+                button.textContent = 'Cancel Request';
+                button.style.backgroundColor = '#e4e6eb';
+                button.style.color = '#1c1e21';
+                UI.showNotification('Friend request sent to ' + targetUser.displayName + '!');
+            }
+
+        } catch (error) {
+            console.error('❌ Error handling friend action:', error);
+            UI.showNotification('Error: ' + error.message, 'error');
         }
     }
 
@@ -1540,7 +1754,9 @@ class SocialMediaApp {
             'fa-home': () => {
                 this.renderPosts();
             },
-            'fa-user-friends': () => UI.showNotification('Friends page coming soon!'),
+            'fa-user-friends': () => {
+                window.location.href = 'friends.html';
+            },
             'fa-bell': () => UI.showNotification('Notifications coming soon!'),
             'fa-envelope': () => UI.showNotification('Messages coming soon!')
         };
@@ -1572,7 +1788,7 @@ class SocialMediaApp {
                 this.renderPosts();
             },
             'Profile': () => window.location.href = 'profile.html',
-            'Friends': () => UI.showNotification('Friends page coming soon!'),
+            'Friends': () => window.location.href = 'friends.html',
             'Photos': () => UI.showNotification('Photos page coming soon!'),
             'Videos': () => UI.showNotification('Videos page coming soon!'),
             'Events': () => UI.showNotification('Events page coming soon!'),
