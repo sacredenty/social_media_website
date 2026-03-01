@@ -262,7 +262,8 @@
         </div>
     </div>
 
-    <script src="app-oop.js"></script>
+    <script src="database.js"></script>
+    <script src="app-oop-fixed.js"></script>
     <script>
         // Profile Page Controller
         class ProfilePage {
@@ -271,16 +272,26 @@
                 this.init();
             }
 
-            init() {
-                this.currentUser = User.getCurrentUser();
-                if (!this.currentUser) {
+            async init() {
+                try {
+                    // Initialize database first
+                    if (typeof Database !== 'undefined') {
+                        await Database.init();
+                    }
+                    
+                    this.currentUser = await User.getCurrentUser();
+                    if (!this.currentUser) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    await this.loadProfileData();
+                } catch (error) {
+                    console.error('❌ Error initializing profile page:', error);
                     window.location.href = 'login.html';
-                    return;
                 }
-                this.loadProfileData();
             }
 
-            loadProfileData() {
+            async loadProfileData() {
                 // Update profile information
                 document.getElementById('profileAvatar').src = this.currentUser.avatar;
                 document.getElementById('profileName').textContent = this.currentUser.displayName;
