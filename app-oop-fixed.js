@@ -849,7 +849,8 @@ class Friend {
         try {
             const allRequests = await Database.getAllFriendRequests();
             return allRequests.filter(req => 
-                req.toUserId === userId && req.status === 'pending'
+                (req.toUserId === userId && req.status === 'pending') ||
+                (req.fromUserId === userId && req.status === 'pending')
             );
         } catch (error) {
             console.error('❌ Error getting pending requests:', error);

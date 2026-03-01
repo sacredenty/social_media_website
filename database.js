@@ -403,6 +403,32 @@ class Database {
         return this.getAll('friendRequests');
     }
 
+    static async getPendingRequests(userId) {
+        try {
+            const allRequests = await this.getAllFriendRequests();
+            return allRequests.filter(request => 
+                (request.toUserId === userId && request.status === 'pending') ||
+                (request.fromUserId === userId && request.status === 'pending')
+            );
+        } catch (error) {
+            console.error('❌ Error getting pending requests:', error);
+            return [];
+        }
+    }
+
+    static async getRequestsByUsers(fromUserId, toUserId) {
+        try {
+            const allRequests = await this.getAllFriendRequests();
+            return allRequests.filter(request => 
+                (request.fromUserId === fromUserId && request.toUserId === toUserId) ||
+                (request.fromUserId === toUserId && request.toUserId === fromUserId)
+            );
+        } catch (error) {
+            console.error('❌ Error getting requests by users:', error);
+            return [];
+        }
+    }
+
     static async updateFriendRequest(friendRequest) {
         return this.update('friendRequests', friendRequest.id, friendRequest);
     }

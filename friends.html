@@ -132,10 +132,28 @@
 
             async loadFriendRequests() {
                 try {
+                    console.log('🔍 Loading friend requests for user:', this.currentUser.id);
+                    console.log('🔍 Checking Friend class availability:', typeof Friend);
+                    
                     const requests = await Friend.getPendingRequests(this.currentUser.id);
+                    console.log('📨 Found requests:', requests);
+                    console.log('📨 Requests type:', typeof requests, 'length:', requests?.length);
+                    
                     const container = document.getElementById('friendRequests');
                     
+                    if (!requests || !Array.isArray(requests)) {
+                        console.error('❌ Invalid requests data:', requests);
+                        container.innerHTML = `
+                            <div class="error">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>Error loading friend requests: Invalid data</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
                     if (requests.length === 0) {
+                        console.log('ℹ️ No pending requests found');
                         container.innerHTML = `
                             <div class="no-requests">
                                 <i class="fas fa-user-plus" style="font-size: 48px; margin-bottom: 20px; color: #65676b;"></i>
@@ -145,21 +163,46 @@
                         `;
                         return;
                     }
-
+                    
+                    console.log(`✅ Processing ${requests.length} requests`);
                     container.innerHTML = '';
                     for (const request of requests) {
-                        const fromUser = await Database.getUserById(request.fromUserId);
-                        if (fromUser) {
-                            const requestElement = this.createFriendRequestElement(request, fromUser);
-                            container.appendChild(requestElement);
+                        console.log('🔍 Processing request:', request);
+                        console.log('🔍 Looking up user with ID:', request.fromUserId);
+                        
+                        const fromUserData = await Database.getUserById(request.fromUserId);
+                        console.log('👤 Got user data:', fromUserData);
+                        console.log('🔍 User class available:', typeof User);
+                        
+                        if (fromUserData) {
+                            // Check if User class is available
+                            if (typeof User !== 'undefined') {
+                                // Convert plain object to User instance to access getters
+                                const fromUser = new User(fromUserData);
+                                console.log('✅ Created User instance:', fromUser.displayName);
+                                const requestElement = this.createFriendRequestElement(request, fromUser);
+                                
+                                if (requestElement && requestElement.nodeType === Node.ELEMENT_NODE) {
+                                    container.appendChild(requestElement);
+                                    console.log('✅ Added request element to container');
+                                } else {
+                                    console.error('❌ Invalid DOM element created:', requestElement);
+                                }
+                            } else {
+                                console.error('❌ User class not available in friends.html');
+                                UI.showNotification('User class not available. Please refresh the page.', 'error');
+                            }
+                        } else {
+                            console.error('❌ No user data found for request:', request.fromUserId);
                         }
                     }
                 } catch (error) {
-                    console.error('❌ Error loading friend requests:', error);
+                    console.error('❌ Error in loadFriendRequests:', error);
+                    console.error('❌ Error details:', error.message, error.stack);
                     document.getElementById('friendRequests').innerHTML = `
                         <div class="error">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <p>Error loading friend requests</p>
+                            <p>Error loading friend requests: ${error.message}</p>
                         </div>
                     `;
                 }
@@ -239,38 +282,50 @@
 
                     container.innerHTML = '';
                     for (const user of suggestions) {
-                        const suggestionElement = await this.createSuggestionElement(user);
+                        const suggestionElement = this.createSuggestionElement(user);
                         container.appendChild(suggestionElement);
                     }
                 } catch (error) {
-                    console.error('❌ Error loading suggestions:', error);
+                    console.error('❌ Error loading suggested friends:', error);
                     document.getElementById('suggestedFriends').innerHTML = `
-                        <p style="color: #65676b; text-align: center;">Error loading suggestions</p>
+                        <div class="error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error loading suggested friends</p>
+                        </div>
                     `;
                 }
             }
 
-            async createFriendRequestElement(request, fromUser) {
-                // Convert plain object to User instance to access getters
-                const userInstance = new User(fromUser);
+            createFriendRequestElement(request, fromUser) {
+                console.log('🔍 createFriendRequestElement called with:', { request, fromUser });
                 
+                // Convert plain object to User instance to access getters
+                let userInstance;
+                try {
+                    userInstance = new User(fromUser);
+                    console.log('✅ Created User instance:', userInstance.displayName);
+                } catch (userError) {
+                    console.error('❌ Error creating User instance:', userError);
+                    userInstance = { displayName: 'Unknown User', email: 'No email' };
+                }
+                
+                console.log('🔍 Creating DOM element...');
                 const element = document.createElement('div');
                 element.className = 'friend-request';
-                element.innerHTML = `
-                    <img src="${userInstance.avatar}" alt="${userInstance.displayName}" class="request-avatar">
-                    <div class="request-info">
-                        <h4>${userInstance.displayName}</h4>
-                        <p>wants to be your friend</p>
-                    </div>
-                    <div class="request-actions">
-                        <button class="btn btn-primary btn-sm" onclick="friendsPage.acceptRequest(${request.id})">
-                            <i class="fas fa-check"></i> Accept
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="friendsPage.declineRequest(${request.id})">
-                            <i class="fas fa-times"></i> Decline
-                        </button>
-                    </div>
-                `;
+                
+                console.log('🔍 Building HTML strings...');
+                // Build HTML string properly
+                const avatarImg = `<img src="${userInstance.avatar}" alt="${userInstance.displayName}" class="request-avatar">`;
+                const userInfo = `<div class="request-info"><h4>${userInstance.displayName}</h4><p>wants to be your friend</p></div>`;
+                const actions = `<div class="request-actions"><button class="btn btn-primary btn-sm" onclick="friendsPage.acceptRequest(${request.id})"><i class="fas fa-check"></i> Accept</button><button class="btn btn-secondary btn-sm" onclick="friendsPage.declineRequest(${request.id})"><i class="fas fa-times"></i> Decline</button></div>`;
+                
+                console.log('🔍 Setting innerHTML...');
+                element.innerHTML = avatarImg + userInfo + actions;
+                
+                console.log('🔍 Element created:', element);
+                console.log('🔍 Element type:', typeof element);
+                console.log('🔍 Element nodeType:', element.nodeType);
+                
                 return element;
             }
 
