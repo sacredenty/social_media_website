@@ -1560,6 +1560,52 @@ class UI {
             this.showNotification('Error posting comment', 'error');
         }
     }
+
+    static async loadSuggestions() {
+        try {
+            console.log('🔍 Loading friend suggestions...');
+            
+            const currentUser = await User.getCurrentUser();
+            if (!currentUser) {
+                console.log('ℹ️ No current user found for suggestions');
+                return;
+            }
+
+            // Get all users except current user
+            const allUsers = await Database.getAllUsers();
+            const suggestions = allUsers
+                .filter(user => user.id !== currentUser.id)
+                .slice(0, 5); // Limit to 5 suggestions
+
+            this.renderSuggestions(suggestions);
+        } catch (error) {
+            console.error('❌ Error loading suggestions:', error);
+        }
+    }
+
+    static renderSuggestions(suggestions) {
+        const suggestionsContainer = document.getElementById('suggestionsList');
+        if (!suggestionsContainer) {
+            console.error('❌ Suggestions container not found!');
+            return;
+        }
+
+        if (suggestions.length === 0) {
+            suggestionsContainer.innerHTML = '<p style="padding: 10px; color: #65676b;">No suggestions available</p>';
+            return;
+        }
+
+        suggestionsContainer.innerHTML = suggestions.map(user => `
+            <div class="suggestion-item">
+                <img src="${user.avatar}" alt="${user.displayName}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                <div class="suggestion-info">
+                    <h4>${user.displayName || user.email}</h4>
+                    <p>Suggested for you</p>
+                </div>
+                <button class="add-friend-btn" onclick="app.handleAddFriend(${user.id})">Add Friend</button>
+            </div>
+        `).join('');
+    }
 }
 
 // ============================================================================
@@ -1608,6 +1654,9 @@ class SocialMediaApp {
             
             // Load posts
             await this.loadPosts();
+            
+            // Load friend suggestions
+            await UI.loadSuggestions();
             
             // Update UI with current user
             if (this.currentUser) {
@@ -2046,44 +2095,70 @@ class SocialMediaApp {
 
     async handleAddFriend(e) {
         const button = e.currentTarget;
-        const postElement = button.closest('.post');
         
-        if (!postElement || !this.currentUser) {
+        if (!this.currentUser) {
             UI.showNotification('Please log in to add friends', 'error');
             return;
         }
 
-        // Get the post author's user ID (we'll need to enhance post data to include this)
-        const postAuthor = postElement.querySelector('.post-author-info h4')?.textContent;
+        let targetUser = null;
+        let targetUserId = null;
+
+        // Check if this is from suggestions (has user ID as parameter)
+        if (typeof e === 'number') {
+            targetUserId = e;
+            const allUsers = await Database.getAllUsers();
+            targetUser = allUsers.find(user => user.id === targetUserId);
+        } else {
+            // This is from a post
+            const postElement = button.closest('.post');
+            
+            if (!postElement) {
+                UI.showNotification('Unable to identify user', 'error');
+                return;
+            }
+
+            // Get the post author's user ID from data attribute
+            const authorId = postElement.querySelector('.post-author-info h4')?.dataset.authorId;
+            if (authorId) {
+                targetUserId = parseInt(authorId);
+                const allUsers = await Database.getAllUsers();
+                targetUser = allUsers.find(user => user.id === targetUserId);
+            } else {
+                // Fallback to display name lookup
+                const postAuthor = postElement.querySelector('.post-author-info h4')?.textContent;
+                if (!postAuthor) {
+                    UI.showNotification('Unable to identify user', 'error');
+                    return;
+                }
+                
+                const allUsers = await Database.getAllUsers();
+                targetUser = allUsers.find(user => user.displayName === postAuthor);
+                if (targetUser) {
+                    targetUserId = targetUser.id;
+                }
+            }
+        }
         
-        if (!postAuthor) {
-            UI.showNotification('Unable to identify user', 'error');
+        if (!targetUser) {
+            UI.showNotification('User not found', 'error');
+            return;
+        }
+
+        // Check if trying to add self
+        if (targetUser.id === this.currentUser.id) {
+            UI.showNotification('You cannot add yourself as a friend', 'error');
+            return;
+        }
+
+        // Check current friendship status
+        const areAlreadyFriends = await Friend.areFriends(this.currentUser.id, targetUser.id);
+        if (areAlreadyFriends) {
+            UI.showNotification('You are already friends with ' + targetUser.displayName, 'info');
             return;
         }
 
         try {
-            // Find the target user by display name
-            const allUsers = await Database.getAllUsers();
-            const targetUser = allUsers.find(user => user.displayName === postAuthor);
-            
-            if (!targetUser) {
-                UI.showNotification('User not found', 'error');
-                return;
-            }
-
-            // Check if trying to add self
-            if (targetUser.id === this.currentUser.id) {
-                UI.showNotification('You cannot add yourself as a friend', 'error');
-                return;
-            }
-
-            // Check current friendship status
-            const areAlreadyFriends = await Friend.areFriends(this.currentUser.id, targetUser.id);
-            if (areAlreadyFriends) {
-                UI.showNotification('You are already friends with ' + targetUser.displayName, 'info');
-                return;
-            }
-
             // Check for existing requests
             const existingRequests = await Friend.getRequestsByUsers(this.currentUser.id, targetUser.id);
             const myRequest = existingRequests.find(req => req.fromUserId === this.currentUser.id);
