@@ -1025,16 +1025,50 @@ class UI {
                 <p style="color: #65676b; font-size: 14px;">No comments yet. Be the first to comment!</p>
             `;
             console.log('No comments found, showing placeholder');
-            return;
+        } else {
+            container.innerHTML = '';
+            comments.forEach(comment => {
+                console.log('Rendering comment:', comment);
+                this.renderComment(comment, container, 0);
+            });
         }
-
-        console.log('Rendering comments...');
-        container.innerHTML = '';
-        comments.forEach(comment => {
-            console.log('Rendering comment:', comment);
-            this.renderComment(comment, container, 0);
-        });
         
+        // Add comment input area at the bottom
+        const commentInput = document.createElement('div');
+        commentInput.className = 'comment-input-area';
+        commentInput.style.cssText = `
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e4e6eb;
+        `;
+        
+        commentInput.innerHTML = `
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <img src="${window.app.currentUser.avatar || 'https://picsum.photos/seed/default/32/32'}" alt="Your avatar" style="width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;">
+                <div style="flex: 1;">
+                    <textarea 
+                        id="commentInput-${postId}"
+                        placeholder="Write a comment..." 
+                        style="
+                            width: 100%; 
+                            min-height: 40px; 
+                            padding: 8px 12px; 
+                            border: 1px solid #dddfe2; 
+                            border-radius: 18px; 
+                            resize: none; 
+                            outline: none; 
+                            font-family: inherit; 
+                            font-size: 14px; 
+                            line-height: 1.4;
+                            box-sizing: border-box;
+                        "
+                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); app.submitCommentFromInput(${postId}); }"
+                    ></textarea>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(commentInput);
         console.log('Comments rendered successfully');
     }
 
@@ -1562,6 +1596,52 @@ class SocialMediaApp {
         } else {
             console.log('Hiding comments section');
             commentsSection.style.display = 'none';
+        }
+    }
+
+    async submitCommentFromInput(postId) {
+        const inputElement = document.getElementById(`commentInput-${postId}`);
+        const content = inputElement.value.trim();
+        
+        if (!content) {
+            return; // Don't submit empty comments
+        }
+
+        try {
+            const newComment = await Comment.saveComment({
+                postId: postId,
+                author: this.currentUser.displayName,
+                authorAvatar: this.currentUser.avatar,
+                content: content
+            });
+
+            // Update post comment count
+            const posts = await Post.getAllPosts();
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                posts[postIndex].comments++;
+                await Post.saveAllPosts(posts);
+            }
+
+            // Clear input and refresh comments
+            inputElement.value = '';
+            
+            // Re-render comments
+            const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+            const commentsList = postElement.querySelector('.comments-list');
+            await UI.renderComments(postId, commentsList);
+
+            // Update post stats
+            const statsContainer = postElement.querySelector('.post-stats');
+            const commentsSpan = statsContainer.querySelectorAll('span')[1];
+            if (commentsSpan) {
+                commentsSpan.innerHTML = `<i class="fas fa-comment"></i> ${posts[postIndex].comments}`;
+            }
+
+            UI.showNotification('Comment posted successfully!', 'success');
+        } catch (error) {
+            console.error('❌ Error posting comment:', error);
+            UI.showNotification('Error posting comment', 'error');
         }
     }
 
