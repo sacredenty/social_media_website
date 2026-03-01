@@ -201,20 +201,6 @@
                 console.error('Search class not yet loaded');
             }
         }
-        
-        // Initialize app when DOM is ready
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 DOM loaded, initializing app...');
-            
-            // Create app instance first
-            window.app = new SocialMediaApp();
-            
-            if (typeof window.app !== 'undefined') {
-                await window.app.initializeMainApp();
-            } else {
-                console.error('App creation failed');
-            }
-        });
     </script>
 </body>
 </html>
