@@ -12,7 +12,7 @@ if (typeof window !== 'undefined') {
 
 class Database {
     static DB_NAME = 'socializers_db';
-    static DB_VERSION = 1;
+    static DB_VERSION = 2; // Increment version to trigger schema update
     static db = null;
 
     static async init() {
@@ -20,37 +20,32 @@ class Database {
             console.log('🗄️ Database.init() called');
             
             if (this.db) {
-                console.log('✅ Database already initialized');
                 resolve(this.db);
                 return;
             }
-            
-            console.log('🔄 Opening database...');
-            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-            
+
+            console.log('🔄 Initializing database...');
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION); // Increment version to trigger schema update
+
             request.onerror = () => {
-                console.error('❌ Database failed to open');
+                console.error('❌ Database error:', request.error);
                 reject(request.error);
             };
-            
+
             request.onsuccess = () => {
                 this.db = request.result;
-                console.log('✅ Database opened successfully');
-                console.log('🗄️ Database name:', this.DB_NAME);
-                console.log('🗄️ Database version:', this.DB_VERSION);
-                console.log('🗄️ Object stores:', Array.from(this.db.objectStoreNames));
-                
-                // Check database persistence
-                this.checkPersistence();
-                
+                console.log('✅ Database initialized successfully');
                 resolve(this.db);
             };
-            
+
             request.onupgradeneeded = (event) => {
-                console.log('🔄 Database upgrade needed');
+                console.log('🔄 Database upgrade needed...');
                 this.db = event.target.result;
-                console.log('🗄️ Creating object stores...');
+
+                // Create object stores if they don't exist
                 this.createObjectStores();
+                
+                console.log('✅ Database schema upgraded');
             };
         });
     }

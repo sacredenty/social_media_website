@@ -292,17 +292,36 @@
                 return element;
             }
 
-            createSuggestionElement(user) {
+            async createSuggestionElement(user) {
                 const element = document.createElement('div');
                 element.className = 'suggestion-item';
+                
+                // Check if there's already a pending request
+                const existingRequests = await Friend.getRequestsByUsers(this.currentUser.id, user.id);
+                const myRequest = existingRequests.find(req => req.fromUserId === this.currentUser.id);
+                
+                let buttonHTML, buttonClass, buttonClick;
+                
+                if (myRequest && myRequest.status === 'pending') {
+                    // Show cancel request button
+                    buttonHTML = '<i class="fas fa-times"></i> Cancel Request';
+                    buttonClass = 'btn btn-secondary btn-sm';
+                    buttonClick = `friendsPage.cancelRequest(${user.id}, this)`;
+                } else {
+                    // Show add friend button
+                    buttonHTML = '<i class="fas fa-user-plus"></i> Add Friend';
+                    buttonClass = 'btn btn-primary btn-sm';
+                    buttonClick = `friendsPage.addFriend(${user.id})`;
+                }
+                
                 element.innerHTML = `
                     <img src="${user.avatar || 'https://picsum.photos/seed/default/40/40'}" alt="${user.displayName || 'User'}" class="suggestion-avatar">
                     <div class="suggestion-info">
                         <h4>${user.displayName || user.fullName || user.email || 'Unknown User'}</h4>
                         <p>${user.email || 'No email'}</p>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="friendsPage.addFriend('${user.id}')">
-                        <i class="fas fa-user-plus"></i> Add Friend
+                    <button class="${buttonClass}" onclick="${buttonClick}">
+                        ${buttonHTML}
                     </button>
                 `;
                 return element;
@@ -333,12 +352,65 @@
 
             async addFriend(userId) {
                 try {
+                    const button = event.target;
+                    const originalText = button.innerHTML;
+                    
+                    // Show loading state
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+                    button.disabled = true;
+                    
                     await Friend.sendRequest(this.currentUser.id, parseInt(userId));
+                    
+                    // Update button to cancel state
+                    button.innerHTML = '<i class="fas fa-times"></i> Cancel Request';
+                    button.className = 'btn btn-secondary btn-sm';
+                    button.onclick = () => this.cancelRequest(userId, button);
+                    button.disabled = false;
+                    
                     await this.loadSuggestedFriends();
                     UI.showNotification('Friend request sent!', 'success');
                 } catch (error) {
                     console.error('❌ Error sending friend request:', error);
-                    UI.showNotification('Error sending request', 'error');
+                    
+                    // Restore original button state on error
+                    const button = event.target;
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                    
+                    UI.showNotification('Error: ' + error.message, 'error');
+                }
+            }
+
+            async cancelRequest(userId, button) {
+                try {
+                    // Find the request between these users
+                    const requests = await Friend.getRequestsByUsers(this.currentUser.id, parseInt(userId));
+                    const myRequest = requests.find(req => req.fromUserId === this.currentUser.id);
+                    
+                    if (myRequest) {
+                        // Show loading state
+                        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
+                        button.disabled = true;
+                        
+                        await Friend.cancelRequest(myRequest.id);
+                        
+                        // Restore button to add friend state
+                        button.innerHTML = '<i class="fas fa-user-plus"></i> Add Friend';
+                        button.className = 'btn btn-primary btn-sm';
+                        button.onclick = () => this.addFriend(userId);
+                        button.disabled = false;
+                        
+                        await this.loadSuggestedFriends();
+                        UI.showNotification('Friend request cancelled', 'info');
+                    }
+                } catch (error) {
+                    console.error('❌ Error cancelling friend request:', error);
+                    
+                    // Restore button state on error
+                    button.innerHTML = '<i class="fas fa-times"></i> Cancel Request';
+                    button.disabled = false;
+                    
+                    UI.showNotification('Error: ' + error.message, 'error');
                 }
             }
 
