@@ -322,8 +322,8 @@ class User {
 }
 
 // Make Search class globally available
-window.Search = Search;
-console.log('✅ Search class made globally available:', typeof window.Search);
+// window.Search = Search;
+// console.log('✅ Search class made globally available:', typeof window.Search);
 
 // Add test function for debugging
 window.testSearch = (query) => {
