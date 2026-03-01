@@ -76,12 +76,30 @@ class User {
 
     static async getCurrentUser() {
         try {
-            const users = await Database.getAllUsers();
             const currentUserId = localStorage.getItem('socializers_current_user_id');
+            console.log('🔍 Looking for current user with ID:', currentUserId);
             
-            if (!currentUserId) return null;
+            if (!currentUserId) {
+                console.log('ℹ️ No current user ID found in localStorage');
+                return null;
+            }
             
-            return users.find(user => user.id === parseInt(currentUserId));
+            const users = await Database.getAllUsers();
+            console.log('👥 Available users in database:', users.length);
+            
+            // Try both string and number comparison
+            let userData = users.find(user => user.id == currentUserId);
+            
+            if (!userData) {
+                console.log('❌ No user found with ID:', currentUserId);
+                console.log('🔍 Available user IDs:', users.map(u => ({ id: u.id, email: u.email })));
+                return null;
+            }
+            
+            // Create a proper User object to ensure getters work
+            const currentUser = new User(userData);
+            console.log('✅ Current user found:', currentUser.displayName);
+            return currentUser;
         } catch (error) {
             console.error('❌ Error getting current user:', error);
             return null;
@@ -90,7 +108,11 @@ class User {
 
     static async setCurrentUser(user) {
         try {
+            console.log('🔄 Setting current user:', user);
+            console.log('🆔 User ID type:', typeof user.id, 'User ID value:', user.id);
+            
             localStorage.setItem('socializers_current_user_id', user.id.toString());
+            console.log('✅ User ID stored in localStorage:', user.id.toString());
             console.log('✅ User set as current:', user.displayName);
         } catch (error) {
             console.error('❌ Error setting current user:', error);
@@ -150,8 +172,35 @@ class User {
 
     static async authenticate(email, password) {
         try {
+            console.log('🔍 Authenticating user:', email);
+            
+            // Ensure database is initialized
+            if (!Database.db) {
+                console.log('🔄 Database not initialized in authenticate, initializing now...');
+                await Database.init();
+            }
+            
+            console.log('🔍 Looking up user by email:', email);
             const user = await Database.getUserByEmail(email);
-            return user && user.password === password ? user : null;
+            
+            console.log('🔍 User lookup result:', user ? `Found: ${user.displayName}` : 'Not found');
+            
+            if (!user) {
+                console.log('❌ Authentication failed: User not found');
+                return null;
+            }
+            
+            console.log('🔍 Checking password match...');
+            const passwordMatch = user.password === password;
+            console.log('🔍 Password match result:', passwordMatch ? 'Match' : 'No match');
+            
+            if (!passwordMatch) {
+                console.log('❌ Authentication failed: Incorrect password');
+                return null;
+            }
+            
+            console.log('✅ Authentication successful for:', user.displayName);
+            return user;
         } catch (error) {
             console.error('❌ Error during authentication:', error);
             return null;
@@ -984,11 +1033,15 @@ class SocialMediaApp {
             await User.initializeDemoUsers();
             
             // Load current user
+            console.log('🔍 Loading current user...');
             this.currentUser = await User.getCurrentUser();
             if (this.currentUser) {
                 console.log('✅ Current user loaded:', this.currentUser.displayName);
             } else {
-                console.log('ℹ️ No current user - showing login state');
+                console.log('ℹ️ No current user found - redirecting to login');
+                // Redirect to login page if no user is logged in
+                window.location.href = 'login.html';
+                return;
             }
             
             // Initialize UI elements
@@ -1505,9 +1558,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         await User.initializeDemoUsers();
         
         // Load current user
+        console.log('🔍 Checking for logged in user...');
         const currentUser = await User.getCurrentUser();
         if (!currentUser) {
-            console.log('ℹ️ No user logged in - ready for login or registration');
+            console.log('ℹ️ No user logged in - redirecting to login page');
+            window.location.href = 'login.html';
+            return;
         } else {
             console.log('✅ Current user found:', currentUser.displayName);
         }

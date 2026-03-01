@@ -107,19 +107,35 @@ async function handleLogin(e) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     
+    console.log('🔐 Login attempt:', { email, password: '***' });
+    
     // Show loading state
     const form = e.target;
     form.classList.add('loading');
     
     try {
+        // Ensure database is initialized
+        if (!Database.db) {
+            console.log('🔄 Initializing database for login...');
+            await Database.init();
+        }
+        
+        console.log('🔍 Authenticating user...');
         // Use Database class for authentication
         const user = await User.authenticate(email, password);
+        
+        console.log('🔍 Authentication result:', user ? user.displayName : 'null');
         
         form.classList.remove('loading');
         
         if (user) {
+            console.log('✅ User authenticated, setting as current user...');
             // Set current user
             await User.setCurrentUser(user);
+            
+            // Verify the user was set correctly
+            const verifyUser = await User.getCurrentUser();
+            console.log('✅ Verification - Current user after setting:', verifyUser ? verifyUser.displayName : 'null');
             
             // Show success message
             showMessage('Login successful! Redirecting...', 'success');
@@ -132,7 +148,7 @@ async function handleLogin(e) {
             showMessage('Invalid email or password. Please try again.', 'error');
         }
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error);
         form.classList.remove('loading');
         showMessage('Login failed. Please try again.', 'error');
     }

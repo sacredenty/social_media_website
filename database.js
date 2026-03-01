@@ -381,7 +381,24 @@ if (typeof window !== 'undefined') {
         }
     };
     
-    console.log('🧪 Database persistence test function available: window.testDatabasePersistence()');
+    // Add global debugging function
+window.debugUsers = async function() {
+    try {
+        await Database.init();
+        const users = await Database.getAllUsers();
+        console.log('👥 All users in database:');
+        users.forEach(user => {
+            console.log(`  - ID: ${user.id}, Email: ${user.email}, Name: ${user.displayName}, Password: ${user.password}`);
+        });
+        return users;
+    } catch (error) {
+        console.error('❌ Error debugging users:', error);
+        return [];
+    }
+};
+
+console.log('🧪 Debug function available: window.debugUsers()');
+console.log('🧪 Persistence test function available: window.testDatabasePersistence()');
 } else {
     console.log('🗄️ Database class loaded (non-browser environment)');
 }
