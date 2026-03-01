@@ -911,6 +911,9 @@ class UI {
     }
 
     static renderOriginalPostHTML(post) {
+        // Check if we should show the friend button (not for own posts)
+        const showFriendButton = post.authorId && window.app && window.app.currentUser && post.authorId !== window.app.currentUser.id;
+        
         return `
             <div class="post-header">
                 <img src="${post.avatar}" alt="Profile" class="post-author-img">
@@ -939,9 +942,11 @@ class UI {
                 <button class="action-btn" onclick="app.handleShare(this.closest('.post'))">
                     <i class="fas fa-share"></i> Share
                 </button>
+                ${showFriendButton ? `
                 <button class="add-friend-btn" onclick="app.handleAddFriend(event)" data-author="${post.author}">
                     <i class="fas fa-user-plus"></i> Add Friend
                 </button>
+                ` : ''}
             </div>
             <div class="comments-section" style="display: none;">
                 <div class="comments-list"></div>
@@ -950,6 +955,9 @@ class UI {
     }
 
     static renderSharedPostHTML(post) {
+        // Check if we should show the friend button (not for own posts)
+        const showFriendButton = post.originalAuthorId && window.app && window.app.currentUser && post.originalAuthorId !== window.app.currentUser.id;
+        
         return `
             <div class="post-header">
                 <img src="${post.sharedByAvatar}" alt="Profile" class="post-author-img">
@@ -991,9 +999,11 @@ class UI {
                 <button class="action-btn" onclick="app.handleShare(this.closest('.post'))">
                     <i class="fas fa-share"></i> Share
                 </button>
+                ${showFriendButton ? `
                 <button class="add-friend-btn" onclick="app.handleAddFriend(event)" data-author="${post.originalAuthor}">
                     <i class="fas fa-user-plus"></i> Add Friend
                 </button>
+                ` : ''}
             </div>
             <div class="comments-section" style="display: none;">
                 <div class="comments-list"></div>
