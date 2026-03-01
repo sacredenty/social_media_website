@@ -1055,6 +1055,9 @@ class SocialMediaApp {
                 UI.updateProfileUI(this.currentUser);
             }
             
+            // Render posts after loading
+            this.renderPosts();
+            
             // Setup event listeners
             this.setupEventListeners();
             
@@ -1094,9 +1097,12 @@ class SocialMediaApp {
 
     async loadPosts() {
         try {
+            console.log('🔄 Loading posts from database...');
             this.posts = await Post.getAllPosts();
             this.sharedPosts = await SharedPost.getAll();
             console.log('✅ Posts loaded:', this.posts.length, 'Shared posts:', this.sharedPosts.length);
+            console.log('📊 Posts data:', this.posts);
+            console.log('📊 Shared posts data:', this.sharedPosts);
         } catch (error) {
             console.error('❌ Error loading posts:', error);
             this.posts = [];
@@ -1151,18 +1157,33 @@ class SocialMediaApp {
     }
 
     renderPosts() {
+        console.log('🎨 renderPosts() called');
+        console.log('📊 Current posts array:', this.posts);
+        console.log('📊 Current sharedPosts array:', this.sharedPosts);
+        console.log('📊 Current user:', this.currentUser);
+        
         const postsContainer = document.querySelector('.posts-container');
-        if (!postsContainer) return;
+        if (!postsContainer) {
+            console.log('❌ Posts container not found');
+            return;
+        }
 
+        console.log('🧹 Clearing posts container');
         postsContainer.innerHTML = '';
 
         // Combine and sort posts
         const allPosts = [...this.posts, ...this.sharedPosts];
         const sortedPosts = this.sortPosts(allPosts);
+        
+        console.log('📊 Combined posts:', allPosts.length);
+        console.log('📊 Sorted posts:', sortedPosts.length);
 
-        sortedPosts.forEach(post => {
+        sortedPosts.forEach((post, index) => {
+            console.log(`🎨 Rendering post ${index + 1}:`, post);
             UI.renderPost(post, postsContainer);
         });
+        
+        console.log('✅ renderPosts() completed');
     }
 
     sortPosts(posts) {
