@@ -329,27 +329,19 @@
                 return element;
             }
 
-            async createFriendElement(friend) {
+            createFriendElement(friend) {
                 // Convert plain object to User instance to access getters
                 const userInstance = new User(friend);
                 
                 const element = document.createElement('div');
                 element.className = 'friend-item';
-                element.innerHTML = `
-                    <img src="${userInstance.avatar}" alt="${userInstance.displayName}" class="friend-avatar">
-                    <div class="friend-info">
-                        <h4>${userInstance.displayName}</h4>
-                        <p>${userInstance.email}</p>
-                    </div>
-                    <div class="friend-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="friendsPage.viewProfile('${friend.id}')">
-                            <i class="fas fa-user"></i> Profile
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="friendsPage.removeFriend('${friend.id}')">
-                            <i class="fas fa-user-minus"></i> Remove
-                        </button>
-                    </div>
-                `;
+                
+                // Build HTML string properly to avoid template literal issues
+                const avatarImg = `<img src="${userInstance.avatar}" alt="${userInstance.displayName}" class="friend-avatar">`;
+                const userInfo = `<div class="friend-info"><h4>${userInstance.displayName}</h4><p>${userInstance.email}</p></div>`;
+                const actions = `<div class="friend-actions"><button class="btn btn-secondary btn-sm" onclick="friendsPage.viewProfile(&quot;${friend.id}&quot;)"><i class="fas fa-user"></i> Profile</button><button class="btn btn-secondary btn-sm" onclick="friendsPage.removeFriend(&quot;${friend.id}&quot;)"><i class="fas fa-user-minus"></i> Remove</button></div>`;
+                
+                element.innerHTML = avatarImg + userInfo + actions;
                 return element;
             }
 
@@ -378,16 +370,12 @@
                 const element = document.createElement('div');
                 element.className = 'suggestion-item';
                 
-                element.innerHTML = `
-                    <img src="${userInstance.avatar || 'https://picsum.photos/seed/default/40/40'}" alt="${userInstance.displayName || 'User'}" class="suggestion-avatar">
-                    <div class="suggestion-info">
-                        <h4>${userInstance.displayName || userInstance.fullName || userInstance.email || 'Unknown User'}</h4>
-                        <p>${userInstance.email || 'No email'}</p>
-                    </div>
-                    <button class="${buttonClass}" onclick="${buttonClick}">
-                        ${buttonHTML}
-                    </button>
-                `;
+                // Build HTML string properly to avoid template literal issues
+                const avatarImg = `<img src="${userInstance.avatar || 'https://picsum.photos/seed/default/40/40'}" alt="${userInstance.displayName || 'User'}" class="suggestion-avatar">`;
+                const userInfo = `<div class="suggestion-info"><h4>${userInstance.displayName || userInstance.fullName || userInstance.email || 'Unknown User'}</h4><p>${userInstance.email || 'No email'}</p></div>`;
+                const button = `<div class="${buttonClass}" onclick="${buttonClick}">${buttonHTML}</div>`;
+                
+                element.innerHTML = avatarImg + userInfo + button;
                 return element;
             }
 
