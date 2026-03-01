@@ -238,10 +238,10 @@
                     }
 
                     container.innerHTML = '';
-                    suggestions.forEach(user => {
-                        const suggestionElement = this.createSuggestionElement(user);
+                    for (const user of suggestions) {
+                        const suggestionElement = await this.createSuggestionElement(user);
                         container.appendChild(suggestionElement);
-                    });
+                    }
                 } catch (error) {
                     console.error('❌ Error loading suggestions:', error);
                     document.getElementById('suggestedFriends').innerHTML = `
