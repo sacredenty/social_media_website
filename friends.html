@@ -199,19 +199,34 @@
 
             async loadSuggestedFriends() {
                 try {
+                    console.log('🔍 Loading suggested friends...');
                     const allUsers = await Database.getAllUsers();
+                    console.log('👥 All users:', allUsers);
+                    
                     const friends = await Friend.getFriends(this.currentUser.id);
+                    console.log('🤝 Current friends:', friends);
+                    
                     const pendingRequests = await Friend.getPendingRequests(this.currentUser.id);
+                    console.log('📨 Pending requests:', pendingRequests);
                     
                     // Filter out current user, existing friends, and pending requests
                     const friendIds = friends.map(f => f.id);
                     const pendingIds = pendingRequests.map(r => r.fromUserId).concat(pendingRequests.map(r => r.toUserId));
                     
-                    const suggestions = allUsers.filter(user => 
-                        user.id !== this.currentUser.id && 
-                        !friendIds.includes(user.id) && 
-                        !pendingIds.includes(user.id)
-                    ).slice(0, 5); // Show max 5 suggestions
+                    console.log('🔍 Filtering users...');
+                    console.log('Current user ID:', this.currentUser.id);
+                    console.log('Friend IDs to exclude:', friendIds);
+                    console.log('Pending IDs to exclude:', pendingIds);
+                    
+                    const suggestions = allUsers.filter(user => {
+                        const shouldInclude = user.id !== this.currentUser.id && 
+                                          !friendIds.includes(user.id) && 
+                                          !pendingIds.includes(user.id);
+                        console.log(`User ${user.id} (${user.displayName || user.email}): ${shouldInclude ? 'INCLUDE' : 'EXCLUDE'}`);
+                        return shouldInclude;
+                    }).slice(0, 5); // Show max 5 suggestions
+
+                    console.log('💡 Final suggestions:', suggestions);
 
                     const container = document.getElementById('suggestedFriends');
                     
@@ -281,10 +296,10 @@
                 const element = document.createElement('div');
                 element.className = 'suggestion-item';
                 element.innerHTML = `
-                    <img src="${user.avatar}" alt="${user.displayName}" class="suggestion-avatar">
+                    <img src="${user.avatar || 'https://picsum.photos/seed/default/40/40'}" alt="${user.displayName || 'User'}" class="suggestion-avatar">
                     <div class="suggestion-info">
-                        <h4>${user.displayName}</h4>
-                        <p>${user.email}</p>
+                        <h4>${user.displayName || user.fullName || user.email || 'Unknown User'}</h4>
+                        <p>${user.email || 'No email'}</p>
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="friendsPage.addFriend('${user.id}')">
                         <i class="fas fa-user-plus"></i> Add Friend
