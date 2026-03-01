@@ -538,6 +538,427 @@ window.debugUsers = async function() {
 
 console.log('🧪 Debug function available: window.debugUsers()');
 console.log('🧪 Persistence test function available: window.testDatabasePersistence()');
+
+// ============================================================================
+// ENHANCED PERSISTENCE - Backup and Restore Functionality
+// ============================================================================
+
+class EnhancedDatabase {
+    static BACKUP_KEY = 'socializers_db_backup';
+    static AUTO_BACKUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    
+    // Initialize enhanced persistence features
+    static async init() {
+        console.log('🔄 Initializing enhanced persistence...');
+        
+        // Restore from backup if available
+        await this.restoreFromBackup();
+        
+        // Start auto-backup
+        this.startAutoBackup();
+        
+        // Add event listeners for data changes
+        this.addDataChangeListeners();
+        
+        console.log('✅ Enhanced persistence initialized');
+    }
+    
+    // Export all data from IndexedDB
+    static async exportAllData() {
+        try {
+            console.log('📤 Exporting all data...');
+            
+            const data = {
+                users: await Database.getAllUsers(),
+                posts: await Database.getAllPosts(),
+                comments: await Database.getAllComments(),
+                friendRequests: await Database.getAllFriendRequests(),
+                friendships: await Database.getAllFriendships(),
+                sharedPosts: await Database.getAllSharedPosts(),
+                timestamp: new Date().toISOString(),
+                version: Database.DB_VERSION
+            };
+            
+            console.log('✅ Data exported successfully:', {
+                users: data.users.length,
+                posts: data.posts.length,
+                comments: data.comments.length,
+                friendRequests: data.friendRequests.length,
+                friendships: data.friendships.length,
+                sharedPosts: data.sharedPosts.length
+            });
+            
+            return data;
+        } catch (error) {
+            console.error('❌ Error exporting data:', error);
+            return null;
+        }
+    }
+    
+    // Backup data to localStorage
+    static async backupToLocalStorage() {
+        try {
+            console.log('💾 Backing up to localStorage...');
+            
+            const data = await this.exportAllData();
+            if (!data) {
+                throw new Error('Failed to export data');
+            }
+            
+            const backupString = JSON.stringify(data);
+            const sizeInBytes = new Blob([backupString]).size;
+            const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+            
+            // Check localStorage quota
+            const availableSpace = this.getAvailableLocalStorageSpace();
+            if (sizeInBytes > availableSpace) {
+                console.warn('⚠️ Backup data too large for localStorage');
+                return false;
+            }
+            
+            localStorage.setItem(this.BACKUP_KEY, backupString);
+            
+            console.log('✅ Backup completed successfully:', {
+                size: `${sizeInKB} KB`,
+                timestamp: data.timestamp
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Error backing up to localStorage:', error);
+            return false;
+        }
+    }
+    
+    // Restore data from localStorage
+    static async restoreFromBackup() {
+        try {
+            console.log('📥 Restoring from localStorage backup...');
+            
+            const backupString = localStorage.getItem(this.BACKUP_KEY);
+            if (!backupString) {
+                console.log('ℹ️ No backup found in localStorage');
+                return false;
+            }
+            
+            const backupData = JSON.parse(backupString);
+            console.log('📋 Backup data found:', {
+                timestamp: backupData.timestamp,
+                version: backupData.version,
+                users: backupData.users?.length || 0,
+                posts: backupData.posts?.length || 0
+            });
+            
+            // Check if backup is newer than current data
+            const shouldRestore = await this.shouldRestoreFromBackup(backupData);
+            if (!shouldRestore) {
+                console.log('ℹ️ Current data is newer than backup, skipping restore');
+                return false;
+            }
+            
+            // Clear existing data
+            await this.clearAllData();
+            
+            // Import backup data
+            await this.importAllData(backupData);
+            
+            console.log('✅ Restore completed successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ Error restoring from backup:', error);
+            return false;
+        }
+    }
+    
+    // Import data to IndexedDB
+    static async importAllData(data) {
+        try {
+            console.log('📥 Importing data to IndexedDB...');
+            
+            const operations = [];
+            
+            // Import users
+            if (data.users?.length > 0) {
+                operations.push(...data.users.map(user => Database.addUser(user)));
+            }
+            
+            // Import posts
+            if (data.posts?.length > 0) {
+                operations.push(...data.posts.map(post => Database.addPost(post)));
+            }
+            
+            // Import comments
+            if (data.comments?.length > 0) {
+                operations.push(...data.comments.map(comment => Database.addComment(comment)));
+            }
+            
+            // Import friend requests
+            if (data.friendRequests?.length > 0) {
+                operations.push(...data.friendRequests.map(request => Database.addFriendRequest(request)));
+            }
+            
+            // Import friendships
+            if (data.friendships?.length > 0) {
+                operations.push(...data.friendships.map(friendship => Database.addFriendship(friendship)));
+            }
+            
+            // Import shared posts
+            if (data.sharedPosts?.length > 0) {
+                operations.push(...data.sharedPosts.map(sharedPost => Database.addSharedPost(sharedPost)));
+            }
+            
+            // Wait for all operations to complete
+            await Promise.all(operations);
+            
+            console.log('✅ Data import completed successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ Error importing data:', error);
+            return false;
+        }
+    }
+    
+    // Clear all data from IndexedDB
+    static async clearAllData() {
+        try {
+            console.log('🗑️ Clearing all data from IndexedDB...');
+            
+            const stores = ['users', 'posts', 'comments', 'friendRequests', 'friendships', 'sharedPosts'];
+            const operations = stores.map(store => Database.clear(store));
+            
+            await Promise.all(operations);
+            
+            console.log('✅ All data cleared successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ Error clearing data:', error);
+            return false;
+        }
+    }
+    
+    // Check if should restore from backup
+    static async shouldRestoreFromBackup(backupData) {
+        try {
+            // If no current data, restore from backup
+            const currentUsers = await Database.getAllUsers();
+            if (currentUsers.length === 0) {
+                return true;
+            }
+            
+            // If backup is newer, restore
+            const backupTime = new Date(backupData.timestamp);
+            const currentTime = new Date();
+            
+            // If backup is from last 24 hours, don't restore (to prevent overwriting recent changes)
+            const hoursDiff = (currentTime - backupTime) / (1000 * 60 * 60);
+            if (hoursDiff < 24) {
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Error checking restore condition:', error);
+            return false;
+        }
+    }
+    
+    // Get available localStorage space
+    static getAvailableLocalStorageSpace() {
+        try {
+            const testKey = 'test_space';
+            const testData = 'x'.repeat(1024); // 1KB test data
+            let totalSize = 0;
+            
+            // Test localStorage capacity
+            try {
+                while (true) {
+                    localStorage.setItem(testKey + totalSize, testData);
+                    totalSize += 1024;
+                    if (totalSize > 5 * 1024 * 1024) break; // Stop after 5MB
+                }
+            } catch (e) {
+                // Storage quota exceeded
+            }
+            
+            // Clean up test data
+            for (let i = 0; i < totalSize; i += 1024) {
+                localStorage.removeItem(testKey + i);
+            }
+            
+            return totalSize;
+        } catch (error) {
+            console.error('❌ Error checking localStorage space:', error);
+            return 0;
+        }
+    }
+    
+    // Start auto-backup
+    static startAutoBackup() {
+        console.log('⏰ Starting auto-backup every 5 minutes...');
+        
+        setInterval(async () => {
+            try {
+                await this.backupToLocalStorage();
+            } catch (error) {
+                console.error('❌ Auto-backup failed:', error);
+            }
+        }, this.AUTO_BACKUP_INTERVAL);
+    }
+    
+    // Add data change listeners
+    static addDataChangeListeners() {
+        console.log('👂 Adding data change listeners...');
+        
+        // Override Database methods to trigger backups
+        const originalMethods = {
+            addUser: Database.addUser.bind(Database),
+            addPost: Database.addPost.bind(Database),
+            addComment: Database.addComment.bind(Database),
+            addFriendRequest: Database.addFriendRequest.bind(Database),
+            addFriendship: Database.addFriendship.bind(Database),
+            addSharedPost: Database.addSharedPost.bind(Database),
+            deletePost: Database.deletePost.bind(Database),
+            deleteFriendRequest: Database.deleteFriendRequest.bind(Database),
+            deleteFriendship: Database.deleteFriendship.bind(Database)
+        };
+        
+        // Override methods to trigger backup after changes
+        Database.addUser = async (...args) => {
+            const result = await originalMethods.addUser(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.addPost = async (...args) => {
+            const result = await originalMethods.addPost(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.addComment = async (...args) => {
+            const result = await originalMethods.addComment(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.addFriendRequest = async (...args) => {
+            const result = await originalMethods.addFriendRequest(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.addFriendship = async (...args) => {
+            const result = await originalMethods.addFriendship(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.addSharedPost = async (...args) => {
+            const result = await originalMethods.addSharedPost(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.deletePost = async (...args) => {
+            const result = await originalMethods.deletePost(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.deleteFriendRequest = async (...args) => {
+            const result = await originalMethods.deleteFriendRequest(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        Database.deleteFriendship = async (...args) => {
+            const result = await originalMethods.deleteFriendship(...args);
+            setTimeout(() => this.backupToLocalStorage(), 1000);
+            return result;
+        };
+        
+        console.log('✅ Data change listeners added');
+    }
+    
+    // Manual backup trigger
+    static async manualBackup() {
+        console.log('🔧 Manual backup triggered...');
+        return await this.backupToLocalStorage();
+    }
+    
+    // Manual restore trigger
+    static async manualRestore() {
+        console.log('🔧 Manual restore triggered...');
+        return await this.restoreFromBackup();
+    }
+    
+    // Get backup info
+    static getBackupInfo() {
+        try {
+            const backupString = localStorage.getItem(this.BACKUP_KEY);
+            if (!backupString) {
+                return null;
+            }
+            
+            const backupData = JSON.parse(backupString);
+            const sizeInBytes = new Blob([backupString]).size;
+            const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+            
+            return {
+                timestamp: backupData.timestamp,
+                version: backupData.version,
+                size: `${sizeInKB} KB`,
+                users: backupData.users?.length || 0,
+                posts: backupData.posts?.length || 0,
+                comments: backupData.comments?.length || 0,
+                friendRequests: backupData.friendRequests?.length || 0,
+                friendships: backupData.friendships?.length || 0,
+                sharedPosts: backupData.sharedPosts?.length || 0
+            };
+        } catch (error) {
+            console.error('❌ Error getting backup info:', error);
+            return null;
+        }
+    }
+    
+    // Clear backup
+    static clearBackup() {
+        try {
+            localStorage.removeItem(this.BACKUP_KEY);
+            console.log('✅ Backup cleared');
+            return true;
+        } catch (error) {
+            console.error('❌ Error clearing backup:', error);
+            return false;
+        }
+    }
+}
+
+// Initialize enhanced persistence when Database is ready
+if (typeof window !== 'undefined') {
+    // Add initialization after Database.init()
+    const originalInit = Database.init.bind(Database);
+    Database.init = async () => {
+        const result = await originalInit();
+        if (result) {
+            await EnhancedDatabase.init();
+        }
+        return result;
+    };
+    
+    // Add global functions for testing
+    window.enhancedBackup = () => EnhancedDatabase.manualBackup();
+    window.enhancedRestore = () => EnhancedDatabase.manualRestore();
+    window.getBackupInfo = () => EnhancedDatabase.getBackupInfo();
+    window.clearBackup = () => EnhancedDatabase.clearBackup();
+    
+    console.log('🔄 Enhanced persistence functions available:');
+    console.log('  - window.enhancedBackup() - Manual backup');
+    console.log('  - window.enhancedRestore() - Manual restore');
+    console.log('  - window.getBackupInfo() - Get backup information');
+    console.log('  - window.clearBackup() - Clear backup');
+}
+
 } else {
     console.log('🗄️ Database class loaded (non-browser environment)');
 }
