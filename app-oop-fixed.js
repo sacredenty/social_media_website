@@ -1055,7 +1055,10 @@ class UI {
             postProfileImg: document.querySelector('.post-profile-img'),
             profileCardImg: document.querySelector('.profile-card-img'),
             profileCardName: document.getElementById('profileCardName'),
-            profileCardTitle: document.getElementById('profileCardTitle')
+            profileCardTitle: document.getElementById('profileCardTitle'),
+            friendsCount: document.getElementById('friendsCount'),
+            followersCount: document.getElementById('followersCount'),
+            suggestionsList: document.getElementById('suggestionsList')
         };
     }
 
@@ -1606,6 +1609,44 @@ class UI {
             </div>
         `).join('');
     }
+
+    static async loadProfileStats() {
+        try {
+            console.log('📊 Loading profile stats...');
+            
+            const currentUser = await User.getCurrentUser();
+            if (!currentUser) {
+                console.log('ℹ️ No current user found for profile stats');
+                return;
+            }
+
+            // Get friends count
+            const friends = await Friend.getFriends(currentUser.id);
+            const friendsCount = friends.length;
+
+            // For followers, we'll use a simple count (in a real app, this would be a separate table)
+            // For now, we'll simulate followers as friends count * 2 (just for demonstration)
+            const followersCount = friendsCount * 2;
+
+            // Update UI
+            const friendsCountElement = document.getElementById('friendsCount');
+            const followersCountElement = document.getElementById('followersCount');
+
+            if (friendsCountElement) {
+                friendsCountElement.textContent = friendsCount;
+            }
+
+            if (followersCountElement) {
+                followersCountElement.textContent = followersCount > 999 ? 
+                    `${(followersCount / 1000).toFixed(1)}K` : 
+                    followersCount.toString();
+            }
+
+            console.log(`✅ Profile stats loaded: ${friendsCount} friends, ${followersCount} followers`);
+        } catch (error) {
+            console.error('❌ Error loading profile stats:', error);
+        }
+    }
 }
 
 // ============================================================================
@@ -1657,6 +1698,9 @@ class SocialMediaApp {
             
             // Load friend suggestions
             await UI.loadSuggestions();
+            
+            // Load profile statistics
+            await UI.loadProfileStats();
             
             // Update UI with current user
             if (this.currentUser) {
