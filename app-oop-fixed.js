@@ -2138,23 +2138,35 @@ class SocialMediaApp {
     }
 
     async handleAddFriend(e) {
-        const button = e.currentTarget;
-        
+        let button = null;
+        let targetUser = null;
+        let targetUserId = null;
+
         if (!this.currentUser) {
             UI.showNotification('Please log in to add friends', 'error');
             return;
         }
 
-        let targetUser = null;
-        let targetUserId = null;
-
         // Check if this is from suggestions (has user ID as parameter)
         if (typeof e === 'number') {
             targetUserId = e;
+            console.log('🔍 Looking for user with ID:', targetUserId);
             const allUsers = await Database.getAllUsers();
-            targetUser = allUsers.find(user => user.id === targetUserId);
+            console.log('👥 Available users:', allUsers.map(u => ({ id: u.id, displayName: u.displayName })));
+            
+            // Convert plain objects to User instances to get displayName getter
+            const userInstances = allUsers.map(userData => new User(userData));
+            targetUser = userInstances.find(user => user.id === targetUserId);
+            console.log('🎯 Found user:', targetUser);
+            
+            // Find the button for this user in suggestions
+            const suggestionButtons = document.querySelectorAll('.add-friend-btn');
+            button = Array.from(suggestionButtons).find(btn => 
+                btn.getAttribute('onclick')?.includes(`app.handleAddFriend(${targetUserId})`)
+            );
         } else {
             // This is from a post
+            button = e.currentTarget;
             const postElement = button.closest('.post');
             
             if (!postElement) {
@@ -2185,9 +2197,13 @@ class SocialMediaApp {
         }
         
         if (!targetUser) {
+            console.error('❌ Target user not found. TargetUserId:', targetUserId);
+            console.error('❌ Available users:', allUsers.map(u => ({ id: u.id, displayName: u.displayName })));
             UI.showNotification('User not found', 'error');
             return;
         }
+
+        console.log('🎯 Found target user:', targetUser);
 
         // Check if trying to add self
         if (targetUser.id === this.currentUser.id) {
