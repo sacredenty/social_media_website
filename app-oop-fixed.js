@@ -550,12 +550,12 @@ class UI {
             <div class="modal-body">
                 ${content}
             </div>
-            ${onConfirm ? `
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            ${onConfirm ? 
+                `<div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                     <button class="modal-cancel" style="padding: 10px 20px; border: 1px solid #dddfe2; background: white; border-radius: 6px; cursor: pointer;">Cancel</button>
                     <button class="modal-confirm" style="padding: 10px 20px; background: #1877f2; color: white; border: none; border-radius: 6px; cursor: pointer;">${confirmText}</button>
-                </div>
-            ` : ''}
+                </div>` 
+            : ''}
         `;
 
         modalOverlay.appendChild(modalContent);
@@ -1502,7 +1502,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Make app globally available
         window.app = app;
         
-        // Global functions for inline event handlers
+    } catch (error) {
+        console.error('❌ Error initializing app:', error);
+    }
+});
+
+// Global functions for inline event handlers
 function showProfileMenu() {
     const menu = document.getElementById('profileMenu');
     if (menu) {
@@ -1545,8 +1550,3 @@ console.log('📝 Available commands:');
 console.log('  - window.app.handleComment(postId)');
 console.log('  - window.app.UI.renderComments(postId, container)');
 console.log('  - window.restartApp() - Restart application');
-        
-    } catch (error) {
-        console.error('❌ Error initializing app:', error);
-    }
-});
