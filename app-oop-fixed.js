@@ -319,6 +319,105 @@ class User {
             console.error('❌ Error restarting app:', error);
         }
     }
+}
+
+// Make Search class globally available
+window.Search = Search;
+console.log('✅ Search class made globally available:', typeof window.Search);
+
+// Add test function for debugging
+window.testSearch = (query) => {
+    console.log('🧪 Testing search with:', query);
+    if (typeof Search !== 'undefined') {
+        Search.performSearch(query);
+    } else {
+        console.error('❌ Search class not available');
+    }
+}
+
+// ============================================================================
+// SEARCH CLASS - Handles search functionality
+// ============================================================================
+class Search {
+    static searchTimeout = null;
+    static searchResults = [];
+
+    static async performSearch(query) {
+        if (!query || query.trim().length < 2) {
+            this.hideResults();
+            return;
+        }
+
+        try {
+            this.showLoading();
+            
+            // Search for users, posts, and friends
+            const [users, posts, friends] = await Promise.all([
+                this.searchUsers(query),
+                this.searchPosts(query),
+                this.searchFriends(query)
+            ]);
+
+            this.searchResults = [...users, ...posts, ...friends];
+            this.displayResults(this.searchResults);
+        } catch (error) {
+            console.error('❌ Error performing search:', error);
+            this.showError();
+        }
+    }
+
+    static async searchUsers(query) {
+        try {
+            const allUsers = await Database.getAllUsers();
+            const currentUser = await User.getCurrentUser();
+            
+            return allUsers
+                .filter(user => 
+                    user.id !== currentUser.id &&
+                    (user.displayName?.toLowerCase().includes(query.toLowerCase()) ||
+                     user.firstName?.toLowerCase().includes(query.toLowerCase()) ||
+                     user.lastName?.toLowerCase().includes(query.toLowerCase()) ||
+                     user.email?.toLowerCase().includes(query.toLowerCase()))
+                )
+                .slice(0, 3)
+                .map(user => ({
+                    type: 'user',
+                    id: user.id,
+                    title: user.displayName || user.email,
+                    subtitle: user.email,
+                    avatar: user.avatar,
+                    data: user
+                }));
+        } catch (error) {
+            console.error('❌ Error searching users:', error);
+            return [];
+        }
+    }
+
+    static async searchPosts(query) {
+        try {
+            const allPosts = await Post.getAllPosts();
+            
+            return allPosts
+                .filter(post => 
+                    post.content?.toLowerCase().includes(query.toLowerCase()) ||
+                    post.author?.toLowerCase().includes(query.toLowerCase())
+                )
+                .slice(0, 5)
+                .map(post => ({
+                    type: 'post',
+                    id: post.id,
+                    title: `Post by ${post.author}`,
+                    subtitle: post.time,
+                    content: post.content,
+                    avatar: post.avatar,
+                    data: post
+                }));
+        } catch (error) {
+            console.error('❌ Error searching posts:', error);
+            return [];
+        }
+    }
 
     static async searchFriends(query) {
         try {
@@ -379,7 +478,7 @@ class User {
         };
 
         return `
-            <div class="search-result-item" onclick="performSearchAction('${result.type}', ${result.id})">
+            <div class="search-result-item" onclick="Search.handleResultClick('${result.type}', ${result.id})">
                 <div class="search-result-header">
                     <img src="${result.avatar}" alt="${result.title}" class="search-result-avatar">
                     <div>
@@ -431,6 +530,8 @@ class User {
 
     static showLoading() {
         const resultsContainer = document.getElementById('searchResults');
+        if (!resultsContainer) return;
+        
         resultsContainer.innerHTML = `
             <div class="search-loading">
                 <i class="fas fa-spinner fa-spin"></i>
@@ -442,6 +543,8 @@ class User {
 
     static showError() {
         const resultsContainer = document.getElementById('searchResults');
+        if (!resultsContainer) return;
+        
         resultsContainer.innerHTML = `
             <div class="search-no-results">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -453,6 +556,8 @@ class User {
 
     static hideResults() {
         const resultsContainer = document.getElementById('searchResults');
+        if (!resultsContainer) return;
+        
         resultsContainer.classList.remove('active');
     }
 
@@ -494,18 +599,6 @@ class User {
         });
     }
 }
-
-// Global search action function
-function performSearchAction(type, query) {
-    if (typeof Search !== 'undefined') {
-        Search.performSearch(query);
-    } else {
-        console.error('Search class not loaded yet');
-    }
-}
-
-// Make Search class globally available
-window.Search = Search;
 
 // ============================================================================
 // POST CLASS - Handles post operations with SQL Database
@@ -961,7 +1054,8 @@ class UI {
             navProfileName: document.querySelector('.nav-profile span'),
             postProfileImg: document.querySelector('.post-profile-img'),
             profileCardImg: document.querySelector('.profile-card-img'),
-            profileCardName: document.querySelector('.profile-card h3')
+            profileCardName: document.getElementById('profileCardName'),
+            profileCardTitle: document.getElementById('profileCardTitle')
         };
     }
 
@@ -1069,8 +1163,16 @@ class UI {
             return;
         }
         
+        console.log('👤 Updating profile UI for user:', user);
+        console.log('🔍 navProfileName element:', this.elements.navProfileName);
+        
         if (this.elements.navProfileImg) this.elements.navProfileImg.src = user.avatar;
-        if (this.elements.navProfileName) this.elements.navProfileName.textContent = user.displayName;
+        if (this.elements.navProfileName) {
+            this.elements.navProfileName.textContent = user.displayName;
+            console.log('✅ Updated nav profile name to:', user.displayName);
+        } else {
+            console.error('❌ navProfileName element not found!');
+        }
         if (this.elements.postProfileImg) this.elements.postProfileImg.src = user.avatar;
         if (this.elements.profileCardImg) this.elements.profileCardImg.src = user.avatar;
         if (this.elements.profileCardName) this.elements.profileCardName.textContent = user.displayName;
@@ -1530,6 +1632,9 @@ class SocialMediaApp {
         try {
             // Initialize UI elements
             UI.initializeElements();
+            
+            // Initialize search functionality
+            Search.initializeSearch();
             
             // Load data (should be empty)
             await this.loadPosts();

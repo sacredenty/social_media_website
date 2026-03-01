@@ -16,8 +16,9 @@
                 <span>Socializers</span>
             </div>
             <div class="nav-search">
-                <input type="text" placeholder="Search friends, posts, and more...">
-                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search friends, posts, and more..." onkeydown="if(event.key === 'Enter') { event.preventDefault(); if(typeof Search !== 'undefined') { Search.performSearch(this.value); } }">
+                <i class="fas fa-search" onclick="if(typeof Search !== 'undefined') { Search.performSearch(document.getElementById('searchInput').value); }" style="cursor: pointer;"></i>
+                <div id="searchResults" class="search-results"></div>
             </div>
             <div class="nav-links">
                 <a href="#" class="nav-link active"><i class="fas fa-home"></i></a>
@@ -26,7 +27,7 @@
                 <a href="#" class="nav-link"><i class="fas fa-envelope"></i></a>
                 <div class="nav-profile" onclick="showProfileMenu()">
                     <img src="https://picsum.photos/seed/user1/40/40" alt="Profile">
-                    <span>John Doe</span>
+                    <span id="navProfileName">Loading...</span>
                     <i class="fas fa-caret-down"></i>
                 </div>
                 <div id="profileMenu" class="profile-menu" style="display: none;">
@@ -152,8 +153,8 @@
             <!-- Your Profile -->
             <div class="profile-card">
                 <img src="https://picsum.photos/seed/user1/100/100" alt="Profile" class="profile-card-img">
-                <h3>John Doe</h3>
-                <p>Software Developer</p>
+                <h3 id="profileCardName">Loading...</h3>
+                <p id="profileCardTitle">Loading...</p>
                 <div class="profile-stats">
                     <div class="stat">
                         <span>250</span>
@@ -164,8 +165,8 @@
                         <span>Followers</span>
                     </div>
                 </div>
-                <script src="auth.js"></script>
             </div>
+            <script src="auth.js"></script>
 
             <!-- Suggestions -->
             <div class="suggestions-card">
