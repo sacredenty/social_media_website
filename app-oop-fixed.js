@@ -379,11 +379,70 @@ class Post {
     static async saveAllPosts(posts) {
         try {
             for (const post of posts) {
-                await Database.updatePost(post);
+                console.log('🔍 Processing post:', post);
+                console.log('🔍 Post ID:', post.id);
+                console.log('🔍 Post ID type:', typeof post.id);
+                console.log('🔍 Post type:', typeof post);
+                
+                // Check for undefined post ID
+                if (post.id == null || post.id === undefined) {
+                    console.error('❌ Post ID is undefined, skipping post:', post);
+                    continue;
+                }
+                
+                // Check for undefined properties before creating postData
+                if (!post || typeof post !== 'object') {
+                    console.error('❌ Invalid post object:', post);
+                    continue;
+                }
+                
+                // Create a clean, minimal data object with only primitive values
+                const postData = {};
+                
+                // Only add properties that exist and are primitive
+                if (post.author !== undefined && post.author !== null) {
+                    postData.author = String(post.author);
+                }
+                if (post.avatar !== undefined && post.avatar !== null) {
+                    postData.avatar = String(post.avatar);
+                }
+                if (post.content !== undefined && post.content !== null) {
+                    postData.content = String(post.content);
+                }
+                if (post.image !== undefined && post.image !== null) {
+                    postData.image = String(post.image);
+                }
+                if (post.likes !== undefined && post.likes !== null) {
+                    postData.likes = Number(post.likes) || 0;
+                }
+                if (post.comments !== undefined && post.comments !== null) {
+                    postData.comments = Number(post.comments) || 0;
+                }
+                if (post.shares !== undefined && post.shares !== null) {
+                    postData.shares = Number(post.shares) || 0;
+                }
+                if (post.time !== undefined && post.time !== null) {
+                    postData.time = String(post.time);
+                }
+                if (post.liked !== undefined && post.liked !== null) {
+                    postData.liked = Boolean(post.liked);
+                }
+                if (post.shared !== undefined && post.shared !== null) {
+                    postData.shared = Boolean(post.shared);
+                }
+                
+                console.log('💾 Attempting to save post data:', postData);
+                console.log('🔍 Post data keys:', Object.keys(postData));
+                console.log('🔍 Post data types:', Object.entries(postData).map(([key, value]) => `${key}: ${typeof value}`));
+                
+                await Database.updatePost(postData, post.id);
+                console.log('✅ Post saved successfully:', post.id);
             }
             console.log('✅ All posts saved to database');
         } catch (error) {
             console.error('❌ Error saving posts:', error);
+            console.error('❌ Error details:', error.message);
+            console.error('❌ Error stack:', error.stack);
         }
     }
 
@@ -499,7 +558,18 @@ class Comment {
     static async saveAllComments(comments) {
         try {
             for (const comment of comments) {
-                await Database.updateComment(comment);
+                // Convert Comment instance back to plain object for database storage
+                const commentData = {
+                    id: comment.id,
+                    postId: comment.postId,
+                    author: comment.author,
+                    avatar: comment.avatar,
+                    content: comment.content,
+                    time: comment.time,
+                    likes: comment.likes,
+                    parentId: comment.parentId
+                };
+                await Database.updateComment(commentData);
             }
             console.log('✅ All comments saved to database');
         } catch (error) {
@@ -776,14 +846,16 @@ class UI {
         `;
     }
 
-    static renderComments(postId, container) {
+    static async renderComments(postId, container) {
         console.log('renderComments called for postId:', postId);
         console.log('Container:', container);
         
-        const comments = Comment.getThreadedComments(postId);
+        const comments = await Comment.getThreadedComments(postId);
         console.log('Comments found:', comments);
+        console.log('Comments type:', typeof comments);
+        console.log('Is comments an array?', Array.isArray(comments));
         
-        if (comments.length === 0) {
+        if (!comments || comments.length === 0) {
             container.innerHTML = `
                 <p style="color: #65676b; font-size: 14px;">No comments yet. Be the first to comment!</p>
             `;
@@ -1254,10 +1326,17 @@ class SocialMediaApp {
     handleLike(button) {
         const post = button.closest('.post');
         const postId = parseInt(post.dataset.postId);
-        const currentPost = this.posts.find(p => p.id === postId);
+        const currentPostData = this.posts.find(p => p.id === postId);
         
-        if (currentPost) {
+        if (currentPostData) {
+            // Convert plain object to Post instance to access methods
+            const currentPost = new Post(currentPostData);
             const liked = currentPost.like();
+            
+            // Update the post data in the array
+            const postIndex = this.posts.findIndex(p => p.id === postId);
+            this.posts[postIndex] = currentPost;
+            
             Post.saveAllPosts(this.posts);
             
             // Update button UI
@@ -1281,7 +1360,7 @@ class SocialMediaApp {
         }
     }
 
-    handleComment(postId) {
+    async handleComment(postId) {
         console.log('handleComment called with postId:', postId);
         
         // Find the post element
@@ -1311,7 +1390,7 @@ class SocialMediaApp {
             console.log('Comments list found:', commentsList);
             
             if (commentsList) {
-                UI.renderComments(postId, commentsList);
+                await UI.renderComments(postId, commentsList);
             } else {
                 console.error('Comments list not found');
             }
@@ -1323,11 +1402,18 @@ class SocialMediaApp {
 
     handleCommentLike(commentId, button) {
         const allComments = Comment.getAllComments();
-        const comment = allComments.find(c => c.id === commentId);
+        const commentData = allComments.find(c => c.id === commentId);
         
-        if (!comment) return;
+        if (!commentData) return;
 
+        // Convert plain object to Comment instance to access methods
+        const comment = new Comment(commentData);
         const liked = comment.like();
+        
+        // Update the comment data in the array
+        const commentIndex = allComments.findIndex(c => c.id === commentId);
+        allComments[commentIndex] = comment;
+        
         Comment.saveAllComments(allComments);
 
         // Update button UI

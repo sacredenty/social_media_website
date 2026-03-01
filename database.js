@@ -180,12 +180,77 @@ class Database {
 
     static async update(storeName, id, data) {
         return new Promise((resolve, reject) => {
+            console.log('🔄 Database.update called:', { storeName, id, data });
+            console.log('🔍 ID type:', typeof id);
+            console.log('🔍 ID value:', id);
+            console.log('🔍 Data type:', typeof data);
+            console.log('🔍 Data is null/undefined:', data == null);
+            console.log('🔍 Data is plain object:', data && data.constructor === Object);
+            
+            // Validate inputs
+            if (id == null || id === undefined) {
+                console.error('❌ Invalid ID:', id);
+                reject(new Error('Invalid ID: ID cannot be null or undefined'));
+                return;
+            }
+            
+            if (data == null || data === undefined) {
+                console.error('❌ Invalid data:', data);
+                reject(new Error('Invalid data: data cannot be null or undefined'));
+                return;
+            }
+            
+            // Check for any non-serializable properties
+            for (const [key, value] of Object.entries(data)) {
+                console.log(`🔍 Checking property ${key}:`, value, typeof value);
+                
+                if (typeof value === 'function') {
+                    console.error('❌ Function found in data:', key);
+                    reject(new Error(`Cannot save function property: ${key}`));
+                    return;
+                }
+                if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+                    if (value.constructor !== Object) {
+                        console.error('❌ Non-plain object found:', key, value.constructor.name);
+                        reject(new Error(`Cannot save non-plain object: ${key}`));
+                        return;
+                    }
+                }
+            }
+            
+            console.log('🔄 Creating transaction...');
             const transaction = this.db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
-            const request = store.put(data, id);
             
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            // For autoIncrement stores (like posts), the approach is different
+            // For new records: put(data) - autoIncrement generates the key
+            // For existing records: put(data) where data contains the keyPath property
+            let request;
+            if (storeName === 'posts') {
+                // For posts store with autoIncrement and keyPath 'id'
+                // We need to include the id in the data and use put(data) only
+                const dataWithId = { ...data, id: id };
+                console.log('📝 Posts store: using put(dataWithId) where dataWithId.id =', id);
+                console.log('📝 DataWithId:', dataWithId);
+                request = store.put(dataWithId);
+            } else if (!data.hasOwnProperty('id')) {
+                console.log('📝 Using put(data, id) for store:', storeName);
+                request = store.put(data, id);
+            } else {
+                console.log('📝 Using put(data) for store:', storeName);
+                request = store.put(data);
+            }
+            
+            request.onsuccess = () => {
+                console.log('✅ Database update successful:', id);
+                resolve(request.result);
+            };
+            request.onerror = () => {
+                console.error('❌ Database update error:', request.error);
+                console.error('❌ Error name:', request.error.name);
+                console.error('❌ Error message:', request.error.message);
+                reject(request.error);
+            };
         });
     }
 
@@ -250,8 +315,8 @@ class Database {
         return this.getAll('posts');
     }
 
-    static async updatePost(postData) {
-        return this.update('posts', postData);
+    static async updatePost(postData, id) {
+        return this.update('posts', id, postData);
     }
 
     static async deletePost(id) {
