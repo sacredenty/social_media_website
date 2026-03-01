@@ -2,12 +2,27 @@
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔍 Auth page loaded');
     
+    // Check if Database class is available
+    if (typeof Database === 'undefined') {
+        console.error('❌ Database class is not defined. Check that database.js loaded properly.');
+        alert('Database initialization failed: Database class not found. Please refresh the page.');
+        return;
+    }
+    
+    // Check if User class is available
+    if (typeof User === 'undefined') {
+        console.error('❌ User class is not defined. Check that app-oop-fixed.js loaded properly.');
+        alert('User class not found. Please refresh the page.');
+        return;
+    }
+    
     // Initialize database first
     try {
         await Database.init();
         console.log('✅ Database initialized in auth.js');
     } catch (error) {
         console.error('❌ Database initialization failed:', error);
+        alert('Database initialization failed. Please refresh the page.');
         return;
     }
     
@@ -31,50 +46,62 @@ function initializeAuth() {
         passwordInput.addEventListener('input', checkPasswordStrength);
     }
     
-    // Load saved users from localStorage
-    loadUsers();
+    // Initialize demo users if database is empty
+    initializeDemoUsers();
 }
 
-// User storage
-let users = JSON.parse(localStorage.getItem('socializers_users')) || [];
-
-function loadUsers() {
-    // Initialize with demo users if no users exist
-    if (users.length === 0) {
-        users = [
-            {
-                id: 1,
-                firstName: 'John',
-                lastName: 'Doe',
-                email: 'john.doe@example.com',
-                password: 'password123',
-                birthday: '1990-01-15',
-                gender: 'male',
-                avatar: 'https://picsum.photos/seed/user1/100/100',
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 2,
-                firstName: 'Jane',
-                lastName: 'Smith',
-                email: 'jane.smith@example.com',
-                password: 'password123',
-                birthday: '1992-05-22',
-                gender: 'female',
-                avatar: 'https://picsum.photos/seed/user2/100/100',
-                createdAt: new Date().toISOString()
+// Initialize demo users for testing
+async function initializeDemoUsers() {
+    try {
+        const existingUsers = await Database.getAllUsers();
+        
+        if (existingUsers.length === 0) {
+            console.log('📝 Creating demo users for testing...');
+            
+            const demoUsers = [
+                {
+                    firstName: 'John',
+                    lastName: 'Doe',
+                    email: 'john.doe@example.com',
+                    password: 'password123',
+                    birthday: '1990-01-15',
+                    gender: 'male'
+                },
+                {
+                    firstName: 'Jane',
+                    lastName: 'Smith',
+                    email: 'jane.smith@example.com',
+                    password: 'password123',
+                    birthday: '1992-05-22',
+                    gender: 'female'
+                },
+                {
+                    firstName: 'Test',
+                    lastName: 'User',
+                    email: 'test@example.com',
+                    password: 'test123',
+                    birthday: '1995-08-10',
+                    gender: 'male'
+                }
+            ];
+            
+            for (const userData of demoUsers) {
+                await User.register(userData);
             }
-        ];
-        saveUsers();
+            
+            console.log('✅ Demo users created successfully');
+            console.log('📝 Available test accounts:');
+            console.log('  - john.doe@example.com / password123');
+            console.log('  - jane.smith@example.com / password123');
+            console.log('  - test@example.com / test123');
+        }
+    } catch (error) {
+        console.error('❌ Error creating demo users:', error);
     }
 }
 
-function saveUsers() {
-    localStorage.setItem('socializers_users', JSON.stringify(users));
-}
-
 // Handle login
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     
     const email = document.getElementById('email').value;
@@ -84,16 +111,15 @@ function handleLogin(e) {
     const form = e.target;
     form.classList.add('loading');
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+        // Use Database class for authentication
+        const user = await User.authenticate(email, password);
+        
         form.classList.remove('loading');
         
-        // Find user
-        const user = users.find(u => u.email === email && u.password === password);
-        
         if (user) {
-            // Store current user in localStorage
-            localStorage.setItem('socializers_current_user_id', user.id.toString());
+            // Set current user
+            await User.setCurrentUser(user);
             
             // Show success message
             showMessage('Login successful! Redirecting...', 'success');
@@ -105,7 +131,11 @@ function handleLogin(e) {
         } else {
             showMessage('Invalid email or password. Please try again.', 'error');
         }
-    }, 1000);
+    } catch (error) {
+        console.error('Login error:', error);
+        form.classList.remove('loading');
+        showMessage('Login failed. Please try again.', 'error');
+    }
 }
 
 // Handle registration
@@ -130,33 +160,15 @@ async function handleRegister(e) {
     form.classList.add('loading');
     
     try {
-        // Check if user already exists using database
-        const existingUser = await Database.getUserByEmail(email);
-        
-        if (existingUser) {
-            showMessage('An account with this email already exists.', 'error');
-            return;
-        }
-        
-        // Create new user
-        const newUser = {
-            id: Date.now(),
+        // Use User class for registration
+        const newUser = await User.register({
             firstName: firstName,
             lastName: lastName,
             email: email,
             password: password,
             birthday: birthday,
-            gender: gender,
-            avatar: `https://picsum.photos/seed/user${Date.now()}/100/100`,
-            createdAt: new Date().toISOString()
-        };
-        
-        // Save to database
-        await Database.addUser(newUser);
-        
-        // Save to localStorage array (for compatibility)
-        users.push(newUser);
-        localStorage.setItem('socializers_users', JSON.stringify(users));
+            gender: gender
+        });
         
         form.classList.remove('loading');
         showMessage('Account created successfully! You can now log in.', 'success');
@@ -169,7 +181,7 @@ async function handleRegister(e) {
     } catch (error) {
         console.error('Registration error:', error);
         form.classList.remove('loading');
-        showMessage('Error creating account. Please try again.', 'error');
+        showMessage(error.message || 'Error creating account. Please try again.', 'error');
     }
 }
 
@@ -302,14 +314,19 @@ function clearMessages() {
 }
 
 // Forgot password functionality
-function handleForgotPassword() {
+async function handleForgotPassword() {
     const email = prompt('Enter your email address:');
     if (email) {
-        const user = users.find(u => u.email === email);
-        if (user) {
-            showMessage(`Password reset link sent to ${email}`, 'success');
-        } else {
-            showMessage('No account found with this email address.', 'error');
+        try {
+            const user = await Database.getUserByEmail(email);
+            if (user) {
+                showMessage(`Password reset link sent to ${email}`, 'success');
+            } else {
+                showMessage('No account found with this email address.', 'error');
+            }
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            showMessage('Error processing request. Please try again.', 'error');
         }
     }
 }

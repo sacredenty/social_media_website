@@ -1,7 +1,15 @@
 // ============================================================================
 // DATABASE CLASS - SQL Database Management
 // ============================================================================
-console.log('🗄️ Database.js loaded');
+console.log('🗄️ Database.js loading...');
+
+// Check if we're in a browser environment
+if (typeof window !== 'undefined') {
+    console.log('🗄️ Browser environment detected');
+} else {
+    console.log('🗄️ Non-browser environment detected');
+}
+
 class Database {
     static DB_NAME = 'socializers_db';
     static DB_VERSION = 1;
@@ -28,16 +36,51 @@ class Database {
             request.onsuccess = () => {
                 this.db = request.result;
                 console.log('✅ Database opened successfully');
-                this.createObjectStores();
+                console.log('🗄️ Database name:', this.DB_NAME);
+                console.log('🗄️ Database version:', this.DB_VERSION);
+                console.log('🗄️ Object stores:', Array.from(this.db.objectStoreNames));
+                
+                // Check database persistence
+                this.checkPersistence();
+                
                 resolve(this.db);
             };
             
             request.onupgradeneeded = (event) => {
                 console.log('🔄 Database upgrade needed');
                 this.db = event.target.result;
+                console.log('🗄️ Creating object stores...');
                 this.createObjectStores();
             };
         });
+    }
+
+    static async checkPersistence() {
+        try {
+            console.log('🔍 Checking database persistence...');
+            
+            // Check if we can access existing data
+            const users = await this.getAllUsers();
+            const posts = await this.getAllPosts();
+            const comments = await this.getAllComments();
+            
+            console.log('📊 Database contents:');
+            console.log(`  - Users: ${users.length}`);
+            console.log(`  - Posts: ${posts.length}`);
+            console.log(`  - Comments: ${comments.length}`);
+            
+            // Log some sample data to verify persistence
+            if (users.length > 0) {
+                console.log('👤 Sample users found:', users.slice(0, 2).map(u => u.email));
+            }
+            
+            if (posts.length > 0) {
+                console.log('📝 Sample posts found:', posts.slice(0, 2).map(p => p.content.substring(0, 50) + '...'));
+            }
+            
+        } catch (error) {
+            console.error('❌ Error checking database persistence:', error);
+        }
     }
 
     static createObjectStores() {
@@ -289,4 +332,56 @@ class Database {
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = Database;
+}
+
+// Confirm Database class is available in browser
+if (typeof window !== 'undefined') {
+    console.log('🗄️ Database class loaded and available in window scope');
+    // Ensure Database is available globally
+    window.Database = Database;
+    
+    // Add global persistence test function
+    window.testDatabasePersistence = async function() {
+        console.log('🧪 Testing database persistence...');
+        try {
+            await Database.init();
+            
+            // Test data
+            const testData = {
+                test: 'persistence',
+                timestamp: new Date().toISOString(),
+                random: Math.random()
+            };
+            
+            // Save test data
+            await Database.add('posts', {
+                author: 'Persistence Test',
+                content: `Test at ${testData.timestamp}`,
+                time: 'Just now',
+                testData: testData
+            });
+            
+            console.log('✅ Test data saved');
+            
+            // Retrieve test data
+            const posts = await Database.getAllPosts();
+            const testPosts = posts.filter(p => p.author === 'Persistence Test');
+            
+            console.log('📊 Found test posts:', testPosts.length);
+            if (testPosts.length > 0) {
+                console.log('✅ Database persistence confirmed - test data found');
+                return true;
+            } else {
+                console.log('❌ Database persistence failed - test data not found');
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error testing persistence:', error);
+            return false;
+        }
+    };
+    
+    console.log('🧪 Database persistence test function available: window.testDatabasePersistence()');
+} else {
+    console.log('🗄️ Database class loaded (non-browser environment)');
 }

@@ -82,6 +82,7 @@
     </div>
     
     <script src="database.js"></script>
+    <script src="app-oop-fixed.js"></script>
     <script src="auth.js"></script>
     <script>
         // Test if Database class is available
@@ -90,6 +91,14 @@
             console.log('✅ Database class is available');
         } else {
             console.error('❌ Database class is NOT available');
+        }
+        
+        // Test if User class is available
+        console.log('🧪 Testing User class availability...');
+        if (typeof User !== 'undefined') {
+            console.log('✅ User class is available');
+        } else {
+            console.error('❌ User class is NOT available');
         }
     </script>
 </body>

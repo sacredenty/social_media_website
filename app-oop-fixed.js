@@ -126,8 +126,13 @@ class User {
         try {
             console.log('🧹 Clearing all application data...');
             
-            // Clear database
-            await Database.clearAll();
+            // Check if Database is available before using it
+            if (typeof Database !== 'undefined') {
+                // Clear database
+                await Database.clearAll();
+            } else {
+                console.warn('⚠️ Database class not available, skipping database clear');
+            }
             
             // Clear localStorage
             localStorage.clear();
@@ -177,12 +182,50 @@ class User {
             const existingUsers = await Database.getAllUsers();
             if (existingUsers && existingUsers.length > 0) {
                 console.log('📝 Users already exist in database, skipping demo initialization');
+                console.log(`✅ Found ${existingUsers.length} existing users`);
                 return;
             }
             
-            console.log('ℹ️ Demo users initialization skipped - no demo users will be created');
+            console.log('ℹ️ No users found - creating demo users for testing');
+            
+            const demoUsers = [
+                {
+                    firstName: 'John',
+                    lastName: 'Doe',
+                    email: 'john.doe@example.com',
+                    password: 'password123',
+                    birthday: '1990-01-15',
+                    gender: 'male'
+                },
+                {
+                    firstName: 'Jane',
+                    lastName: 'Smith',
+                    email: 'jane.smith@example.com',
+                    password: 'password123',
+                    birthday: '1992-05-22',
+                    gender: 'female'
+                },
+                {
+                    firstName: 'Test',
+                    lastName: 'User',
+                    email: 'test@example.com',
+                    password: 'test123',
+                    birthday: '1995-08-10',
+                    gender: 'male'
+                }
+            ];
+            
+            for (const userData of demoUsers) {
+                await this.register(userData);
+            }
+            
+            console.log('✅ Demo users created successfully');
+            console.log('📝 Available test accounts:');
+            console.log('  - john.doe@example.com / password123');
+            console.log('  - jane.smith@example.com / password123');
+            console.log('  - test@example.com / test123');
         } catch (error) {
-            console.error('❌ Error checking demo users:', error);
+            console.error('❌ Error checking/creating demo users:', error);
         }
     }
 
@@ -901,38 +944,41 @@ class SocialMediaApp {
 
     async init() {
         try {
-            // Clear all existing data first
-            await User.clearAllData();
-            console.log('✅ All existing data cleared');
+            console.log('🚀 Initializing SocialMediaApp...');
             
-            // Initialize database first
-            await Database.init();
-            console.log('✅ Database initialized');
+            // Check if Database is available
+            if (typeof Database === 'undefined') {
+                console.error('❌ Database class is not available');
+                throw new Error('Database class not available');
+            }
             
-            // Initialize demo users (now empty)
+            // Initialize database if not already initialized
+            if (!Database.db) {
+                await Database.init();
+                console.log('✅ Database initialized in SocialMediaApp');
+            }
+            
+            // Initialize demo users only if no users exist
             await User.initializeDemoUsers();
             
-            // Load current user (should be null after clear)
+            // Load current user
             this.currentUser = await User.getCurrentUser();
-            if (!this.currentUser) {
-                console.log('ℹ️ No user logged in - redirecting to login page');
-                // Redirect to login page instead of initializing main app
-                window.location.href = 'login.html';
-                return; // Stop initialization
+            if (this.currentUser) {
+                console.log('✅ Current user loaded:', this.currentUser.displayName);
             } else {
-                console.log('✅ User found:', this.currentUser.displayName);
-                // Only initialize main app if user is logged in
-                await this.initializeMainApp();
+                console.log('ℹ️ No current user - showing login state');
             }
             
             // Initialize UI elements
             UI.initializeElements();
             
-            // Load data (should be empty)
+            // Load posts
             await this.loadPosts();
             
-            // Update UI with current user (should show login state)
-            UI.updateProfileUI(this.currentUser);
+            // Update UI with current user
+            if (this.currentUser) {
+                UI.updateProfileUI(this.currentUser);
+            }
             
             // Setup event listeners
             this.setupEventListeners();
@@ -1405,22 +1451,43 @@ window.testClick = () => {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Initializing Social Media App...');
     
+    // Check if we're on an auth page (login or register)
+    const isAuthPage = window.location.pathname.includes('login.html') || 
+                      window.location.pathname.includes('register.html');
+    
+    if (isAuthPage) {
+        console.log('🔐 Auth page detected - skipping main app initialization');
+        return;
+    }
+    
     try {
-        // Clear all existing data first
-        await User.clearAllData();
-        console.log('✅ All existing data cleared');
+        // Check if Database class is available
+        if (typeof Database === 'undefined') {
+            console.error('❌ Database class is not defined. Check that database.js loaded properly.');
+            alert('Database initialization failed: Database class not found. Please refresh the page.');
+            return;
+        }
         
-        // Initialize database first
+        // Check if UI class is available
+        if (typeof UI === 'undefined') {
+            console.error('❌ UI class is not defined.');
+            alert('UI initialization failed: UI class not found. Please refresh the page.');
+            return;
+        }
+        
+        // Initialize database first (don't clear data on normal startup)
         await Database.init();
         console.log('✅ Database initialized');
         
-        // Initialize demo users (now empty)
+        // Initialize demo users only if no users exist
         await User.initializeDemoUsers();
         
-        // Load current user (should be null after clear)
+        // Load current user
         const currentUser = await User.getCurrentUser();
         if (!currentUser) {
-            console.log('ℹ️ No user logged in - ready for registration');
+            console.log('ℹ️ No user logged in - ready for login or registration');
+        } else {
+            console.log('✅ Current user found:', currentUser.displayName);
         }
         
         // Initialize UI elements
